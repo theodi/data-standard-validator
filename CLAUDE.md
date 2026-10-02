@@ -1,7 +1,7 @@
 # @theodi/data-standard-validator
 
 A generic SHACL validator for JSON and JSON-LD documents. It ships as an npm
-package (library + the `dsv` CLI) with a documentation site built from `docs/`
+package (library + the `data-standard-validator` CLI) with a documentation site built from `docs/`
 by MkDocs (Read the Docs theme).
 
 ```bash
@@ -16,7 +16,7 @@ npm run build
 src/                    the published package (compiled to dist/)
   index.ts              browser-safe public API: the only exports consumers see
   node.ts               the same API for Node, plus file paths via node:fs
-  cli.ts                the `dsv` command (commander); exit codes 0/1/2/3
+  cli.ts                the `data-standard-validator` command (commander); exit codes 0/1/2/3
   validator.ts          the pipeline: createValidator(), validate(), chooseContext()
 
   load/                 getting inputs in: a Source becomes text, shapes or a context

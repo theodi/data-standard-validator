@@ -18,32 +18,41 @@ npm install --save-dev @theodi/data-standard-validator   # in a project
 npx @theodi/data-standard-validator --help                # or run it without installing
 ```
 
-## Command line
-
-| Input | Required | Accepted as |
-| --- | --- | --- |
-| SHACL shapes (Turtle) | yes, one or more | URL or file path; several are merged |
-| JSON / JSON-LD documents | yes, one or more | URL, file path or stdin |
-| JSON-LD context | no | URL or file path; replaces each document's own `@context` |
-
-It produces a report as **text** for terminals, **JSON** for programs and web
-pages, or **Markdown** for GitHub job summaries and PR comments.
+## Example
 
 ```bash
-dsv -s shapes.ttl data.json                                # validate one file
-dsv -s https://example.org/shape.ttl -c context.jsonld data/*.json
-dsv -s shape.ttl -s rules.ttl data.jsonld --format json    # merge shapes, machine output
-dsv -s shape.ttl data.jsonld -f markdown >> "$GITHUB_STEP_SUMMARY"
+npx @theodi/data-standard-validator -s person-shape.ttl person.json
 ```
 
-| Exit code | Meaning |
-| --- | --- |
-| 0 | every document conforms |
-| 1 | problems were found |
-| 2 | bad usage |
-| 3 | shapes, a context or a document could not be loaded |
+```text
+person-shape.ttl · 1 document(s)
 
-See the [CLI reference](docs/cli.md) for every option.
+person.json -> fails
+  in Person
+    x Missing required field name
+      at name  line 1
+      Add `name`: The person's full name.
+    x age must be at least 0 - you gave -1
+      at age  line 9
+          9 |   "age": -1
+            |          ^^
+
+2 problems
+  1 required field missing, 1 out of range
+```
+
+The [full example](docs/example.md) shows the shape, the document, and the same
+report as JSON and Markdown.
+
+## Command line
+
+```bash
+npx @theodi/data-standard-validator -s shapes.ttl data.json
+```
+
+Once installed in a project, the command is `data-standard-validator`. The exit
+code is 0 when every document conforms and 1 when one does not. See
+the [CLI reference](docs/cli.md) for every option, output format and exit code.
 
 ## Library
 
@@ -81,3 +90,7 @@ npm test            # unit, pipeline, format and CLI tests - offline
 npm run typecheck
 npm run build       # dist/, which is what gets published
 ```
+
+## License
+
+Licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.

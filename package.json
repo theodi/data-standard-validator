@@ -16,7 +16,6 @@
     "node": ">=22"
   },
   "bin": {
-    "dsv": "./dist/cli.js",
     "data-standard-validator": "./dist/cli.js"
   },
   "exports": {

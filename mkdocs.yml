@@ -20,9 +20,11 @@ markdown_extensions:
   - tables
   - fenced_code
   - admonition
+  - md_in_html
 
 nav:
   - Overview: index.md
+  - Example: example.md
   - Command line: cli.md
   - Library API: api.md
   - Report format: report-format.md

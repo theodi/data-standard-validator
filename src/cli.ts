@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * dsv - validate JSON or JSON-LD documents against SHACL shapes.
+ * data-standard-validator - validate JSON or JSON-LD documents against SHACL shapes.
  *
  * Exit codes are the contract for scripts:
  *   0  every document conforms
@@ -58,7 +58,7 @@ async function readDocuments (args: string[]): Promise<ReadDocument[]> {
 
 async function run (args: string[], flags: Flags): Promise<number> {
   if (flags.shapes.length === 0) {
-    process.stderr.write("dsv: no shapes given - pass at least one -s <file or URL>\n\nSee 'dsv --help'.\n")
+    process.stderr.write("data-standard-validator: no shapes given - pass at least one -s <file or URL>\n\nSee 'data-standard-validator --help'.\n")
     return EXIT_USAGE
   }
 
@@ -73,7 +73,7 @@ async function run (args: string[], flags: Flags): Promise<number> {
     sources = new Map(documents.map((d) => [d.name, d.text]))
     report = await validator.validateAll(documents)
   } catch (error) {
-    process.stderr.write(`dsv: ${(error as Error).message}\n`)
+    process.stderr.write(`data-standard-validator: ${(error as Error).message}\n`)
     return error instanceof SourceError ? EXIT_LOAD : EXIT_USAGE
   }
 
@@ -94,7 +94,7 @@ const collect = (value: string, previous: string[]): string[] => [...previous, v
 const program = new Command()
 
 program
-  .name('dsv')
+  .name('data-standard-validator')
   .description(
     'Validate JSON or JSON-LD documents against SHACL shapes, and explain any\n' +
     'problems in plain English with the JSON path and line where they occur.',
@@ -109,11 +109,11 @@ program
   .option('--no-color', 'plain text output, even in a terminal')
   .addHelpText('after', `
 Examples:
-  dsv -s person-shape.ttl person.json
-  dsv -s https://example.org/shapes/person.ttl -c context.jsonld data/*.json
-  dsv -s shape.ttl -s rules.ttl record.jsonld --format json
-  dsv -s shape.ttl record.jsonld -f markdown >> "$GITHUB_STEP_SUMMARY"
-  cat record.jsonld | dsv -s shape.ttl
+  data-standard-validator -s person-shape.ttl person.json
+  data-standard-validator -s https://example.org/shapes/person.ttl -c context.jsonld data/*.json
+  data-standard-validator -s shape.ttl -s rules.ttl record.jsonld --format json
+  data-standard-validator -s shape.ttl record.jsonld -f markdown >> "$GITHUB_STEP_SUMMARY"
+  cat record.jsonld | data-standard-validator -s shape.ttl
 
 Exit codes:
   0  every document conforms     2  bad usage
@@ -132,6 +132,6 @@ program.exitOverride((error) => {
 })
 
 program.parseAsync(process.argv).catch((error: unknown) => {
-  process.stderr.write(`dsv: ${(error as Error).message}\n`)
+  process.stderr.write(`data-standard-validator: ${(error as Error).message}\n`)
   process.exitCode = EXIT_USAGE
 })

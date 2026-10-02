@@ -41,12 +41,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/smoke" && cd "$RUNNER_TEMP/smoke"
           npm init -y >/dev/null
           npm install "$tarball"
-          npx dsv --help
-          npx dsv -s "$fixtures/person-shape.ttl" "$fixtures/valid.jsonld"
+          npx data-standard-validator --help
+          npx data-standard-validator -s "$fixtures/person-shape.ttl" "$fixtures/valid.jsonld"
           for format in text json markdown; do
             # An invalid document must exit 1 - not 0, and not a crash.
             code=0
-            npx dsv -s "$fixtures/person-shape.ttl" -f "$format" "$fixtures/invalid.jsonld" || code=$?
+            npx data-standard-validator -s "$fixtures/person-shape.ttl" -f "$format" "$fixtures/invalid.jsonld" || code=$?
             [ "$code" -eq 1 ] || { echo "::error::--format $format exited $code, expected 1"; exit 1; }
           done
           node --input-type=module -e "

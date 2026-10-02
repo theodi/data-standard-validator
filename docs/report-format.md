@@ -1,6 +1,6 @@
 # Report format
 
-`validate()` and `validateAll()` resolve to a `RunReport`. `dsv --format json`
+`validate()` and `validateAll()` resolve to a `RunReport`. `data-standard-validator --format json`
 prints that same object. The structure is a published contract: within a major
 version, fields are only ever added.
 

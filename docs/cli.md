@@ -1,10 +1,9 @@
 # Command-line reference
 
-The package installs one command, `dsv`. It also installs the same command as
-`data-standard-validator`.
+The package installs one command, `data-standard-validator`.
 
 ```text
-dsv [options] [documents...]
+data-standard-validator [options] [documents...]
 ```
 
 ## Running it
@@ -12,7 +11,7 @@ dsv [options] [documents...]
 ```bash
 npx @theodi/data-standard-validator -s shape.ttl data.json  # no install needed
 npm install -g @theodi/data-standard-validator              # or install globally ...
-npm install -D @theodi/data-standard-validator              # ... or per project, then run `npx dsv`
+npm install -D @theodi/data-standard-validator              # ... or per project, then run `npx data-standard-validator`
 ```
 
 Node.js 22 or later is required.
@@ -77,7 +76,7 @@ The report exactly as the library returns it. The structure is documented in
 [report-format.md](report-format.md) and is stable within a major version.
 
 ```bash
-dsv -s shape.ttl data.json -f json | jq '.documents[].issues[] | {code, path: .location.jsonPath}'
+data-standard-validator -s shape.ttl data.json -f json | jq '.documents[].issues[] | {code, path: .location.jsonPath}'
 ```
 
 ### `markdown`
@@ -87,7 +86,7 @@ comments, issues. It contains a verdict, a table of documents, and each problem
 with its path, line and fix.
 
 ```bash
-dsv -s shape.ttl data/*.json -f markdown >> "$GITHUB_STEP_SUMMARY"
+data-standard-validator -s shape.ttl data/*.json -f markdown >> "$GITHUB_STEP_SUMMARY"
 ```
 
 ## Exit codes
@@ -109,20 +108,20 @@ run.
 **Validate everything in a folder**
 
 ```bash
-dsv -s shapes/person.ttl -c shapes/context.jsonld data/*.json
+data-standard-validator -s shapes/person.ttl -c shapes/context.jsonld data/*.json
 ```
 
 **Validate against shapes published on the web.** Pin a tag or commit in the
 URL so results do not change under you:
 
 ```bash
-dsv -s https://raw.githubusercontent.com/org/repo/v1.2.0/person-shape.ttl record.jsonld
+data-standard-validator -s https://raw.githubusercontent.com/org/repo/v1.2.0/person-shape.ttl record.jsonld
 ```
 
 **Pipe a document in**
 
 ```bash
-curl -s https://example.org/api/person/42 | dsv -s person-shape.ttl -c context.jsonld
+curl -s https://example.org/api/person/42 | data-standard-validator -s person-shape.ttl -c context.jsonld
 ```
 
 When reading from stdin there is no file location, so a relative `@context` in

@@ -15,7 +15,7 @@ beforeAll(() => {
   execFileSync('npm', ['run', 'build'], { cwd: root, stdio: 'ignore' })
 })
 
-function dsv (args: string[], input?: string): { status: number | null, stdout: string, stderr: string } {
+function runCli (args: string[], input?: string): { status: number | null, stdout: string, stderr: string } {
   const result = spawnSync('node', [cli, ...args], {
     encoding: 'utf8',
     env: { ...process.env, NO_COLOR: '1' },
@@ -26,57 +26,57 @@ function dsv (args: string[], input?: string): { status: number | null, stdout: 
 
 const shapes = ['-s', fixture('person-shape.ttl')]
 
-describe('dsv', () => {
+describe('data-standard-validator', () => {
   test('exits 0 when everything conforms', () => {
-    const run = dsv([...shapes, fixture('valid.jsonld')])
+    const run = runCli([...shapes, fixture('valid.jsonld')])
     expect(run.status).toBe(0)
     expect(run.stdout).toContain('All good - 1 document(s) conform.')
   })
 
   test('exits 1 with a readable report when there are problems', () => {
-    const run = dsv([...shapes, fixture('invalid.jsonld')])
+    const run = runCli([...shapes, fixture('invalid.jsonld')])
     expect(run.status).toBe(1)
     expect(run.stdout).toContain('Missing required field name')
   })
 
   test.each(['text', 'json', 'markdown'])('--format %s', (format) => {
-    const run = dsv([...shapes, '-f', format, fixture('invalid.jsonld')])
+    const run = runCli([...shapes, '-f', format, fixture('invalid.jsonld')])
     expect(run.status).toBe(1)
     if (format === 'json') expect(JSON.parse(run.stdout).conforms).toBe(false)
     if (format === 'markdown') expect(run.stdout).toMatch(/^# person-shape\.ttl/)
   })
 
   test('--context replaces the documents\' own', () => {
-    const run = dsv([...shapes, '-c', fixture('context.jsonld'), fixture('no-context.json')])
+    const run = runCli([...shapes, '-c', fixture('context.jsonld'), fixture('no-context.json')])
     expect(run.status).toBe(0)
   })
 
   test('-s can be repeated, and does not swallow the document', () => {
-    const run = dsv([...shapes, '-s', fixture('rules-shape.ttl'), fixture('nickname.jsonld')])
+    const run = runCli([...shapes, '-s', fixture('rules-shape.ttl'), fixture('nickname.jsonld')])
     expect(run.status).toBe(1)
     expect(run.stdout).toContain('nickname')
   })
 
   test('reads stdin, resolving nothing relative to it', () => {
-    const run = dsv([...shapes, '-c', fixture('context.jsonld')], fixtureText('no-context.json'))
+    const run = runCli([...shapes, '-c', fixture('context.jsonld')], fixtureText('no-context.json'))
     expect(run.status).toBe(0)
     expect(run.stdout).toContain('(stdin) -> passes')
   })
 
   test('exits 2 on bad usage', () => {
-    expect(dsv([fixture('valid.jsonld')]).status).toBe(2)
-    expect(dsv([...shapes, '-f', 'yaml', fixture('valid.jsonld')]).status).toBe(2)
+    expect(runCli([fixture('valid.jsonld')]).status).toBe(2)
+    expect(runCli([...shapes, '-f', 'yaml', fixture('valid.jsonld')]).status).toBe(2)
   })
 
   test('exits 3 when a source cannot be loaded', () => {
-    const run = dsv(['-s', fixture('missing.ttl'), fixture('valid.jsonld')])
+    const run = runCli(['-s', fixture('missing.ttl'), fixture('valid.jsonld')])
     expect(run.status).toBe(3)
     expect(run.stderr).toContain('not found')
-    expect(dsv([...shapes, fixture('missing.json')]).status).toBe(3)
+    expect(runCli([...shapes, fixture('missing.json')]).status).toBe(3)
   })
 
   test('--help and --version exit 0', () => {
-    expect(dsv(['--help']).stdout).toContain('Exit codes:')
-    expect(dsv(['--version']).status).toBe(0)
+    expect(runCli(['--help']).stdout).toContain('Exit codes:')
+    expect(runCli(['--version']).status).toBe(0)
   })
 })
