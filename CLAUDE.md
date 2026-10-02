@@ -1,7 +1,8 @@
 # @theodi/data-standard-validator
 
 A generic SHACL validator for JSON and JSON-LD documents. It ships as an npm
-package (library + the `dsv` CLI) with a static documentation site in `site/`.
+package (library + the `dsv` CLI) with a documentation site built from `docs/`
+by MkDocs (Read the Docs theme).
 
 ```bash
 npm test             # offline: unit, pipeline, format, CLI (builds dist first)
@@ -60,9 +61,9 @@ test/                   vitest; all offline
   cli.test.ts           builds dist/, then runs `node dist/cli.js` as a user would
   architecture.test.ts  layering, no cycles, the node: rule
 
-docs/                   reference docs, linked from README and the site
+docs/                   the documentation site source (MkDocs); index.md is the home page
   cli.md, api.md, report-format.md, error-reference.md, how-it-works.md
-site/                   the GitHub Pages site: hand-written HTML and CSS, no build
+mkdocs.yml              site config and nav; `mkdocs build` writes site/ (gitignored)
 .github/workflows/      ci.yml (test + packed-tarball smoke test), release.yml (npm), pages.yml
 ```
 

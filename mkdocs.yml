@@ -1,0 +1,33 @@
+site_name: Data Standard Validator
+site_description: Check JSON and JSON-LD against SHACL shapes, and say what is wrong in plain English.
+site_author: The Open Data Institute
+site_url: https://theodi.github.io/data-standard-validator/
+repo_url: https://github.com/theodi/data-standard-validator
+edit_uri: edit/main/docs/
+copyright: MIT licensed · © The Open Data Institute
+
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+    - typescript
+    - yaml
+  navigation_depth: 3
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - tables
+  - fenced_code
+  - admonition
+
+nav:
+  - Overview: index.md
+  - Command line: cli.md
+  - Library API: api.md
+  - Report format: report-format.md
+  - Issue codes: error-reference.md
+  - How it works: how-it-works.md
+
+# Fail the build on broken internal links.
+strict: true
