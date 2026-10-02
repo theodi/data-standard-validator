@@ -6,6 +6,7 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'README.md'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -33,6 +34,9 @@ jobs:
           cache: pip
           cache-dependency-path: docs/requirements.txt
       - run: pip install -r docs/requirements.txt
+      # README.md is the home page. Its links point at docs/*.md so they work
+      # on GitHub; on the site those pages sit beside it, so drop the prefix.
+      - run: sed 's|](docs/|](|g' README.md > docs/index.md
       # MkDocs with the Read the Docs theme, built from docs/ into site/.
       - run: mkdocs build
       - uses: actions/upload-pages-artifact@v5
