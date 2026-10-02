@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Standard Validator</title>
+  <meta name="description" content="Validate JSON and JSON-LD against SHACL shapes, with plain-English errors that point at the JSON path and line.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231f5fbf'/><path d='M9 16.5l4.5 4.5L23 11.5' stroke='white' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="./">data-standard-validator <span>by the ODI</span></a>
+      <nav aria-label="Site">
+        <ul>
+          <li><a href="./" aria-current="page">Overview</a></li>
+          <li><a href="cli.html">CLI</a></li>
+          <li><a href="https://github.com/theodi/data-standard-validator/blob/main/docs/api.md">Library API</a></li>
+          <li><a href="https://github.com/theodi/data-standard-validator">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>Check data against a standard, and say what is wrong in words people understand.</h1>
+      <p class="lede">
+        A data standard published as <a href="https://www.w3.org/TR/shacl/">SHACL</a> shapes is
+        precise, but a SHACL engine reports problems in IRIs and blank nodes.
+        This validator checks JSON and JSON-LD against those shapes and reports
+        each problem in plain English. It names the field, the JSON path and
+        the line, and says how to fix it.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="#quick-start">Get started</a>
+        <a class="button" href="cli.html">CLI reference</a>
+      </div>
+      <div class="install">npx @theodi/data-standard-validator --help</div>
+    </section>
+
+    <section aria-labelledby="why">
+      <h2 id="why">The same problem, reported two ways</h2>
+      <div class="compare">
+        <figure>
+          <figcaption>A SHACL engine</figcaption>
+          <div class="term"><span class="dim">Violation</span>
+focus: _:b3
+path:  https://example.org/postcode
+"Value does not match pattern
+ ^[A-Z]{1,2}[0-9][0-9A-Z]? ?[0-9][A-Z]{2}$"</div>
+        </figure>
+        <figure>
+          <figcaption>dsv</figcaption>
+          <div class="term"><b>person.json</b> <span class="dim">-&gt;</span> <span class="red">fails</span>
+  <span class="dim">in</span> <span class="mag">Address (address[0])</span>
+    <span class="red">x</span> <span class="cyan">postcode</span> is not in the expected format - you gave <span class="cyan">NOT A POSTCODE</span>
+      <span class="dim">at</span> <span class="cyan">address[0].postcode</span><span class="dim">  line 10</span>
+      <span class="dim">   10 |</span>   "postcode": "NOT A POSTCODE"
+      <span class="dim">      |</span>               <span class="red">^^^^^^^^^^^^^^^^</span>
+      <span class="dim">It should be a UK postcode, for example AB1 2CD.</span></div>
+        </figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="what">
+      <h2 id="what">What it does</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Any SHACL standard</h3>
+          <p>Point it at one or more Turtle shapes files, by URL or path. Nothing is built in, so it checks against whatever the standard publishes.</p>
+        </div>
+        <div class="card">
+          <h3>Answers that point somewhere</h3>
+          <p>Every issue has a JSON path, a line and column, the value you gave and, for vocabularies, the values that are allowed.</p>
+        </div>
+        <div class="card">
+          <h3>Plain JSON welcome</h3>
+          <p>Supply a JSON-LD context and documents without one are read with it. A context that a document names by URL is loaded for you.</p>
+        </div>
+        <div class="card">
+          <h3>Three report formats</h3>
+          <p>Text for the terminal, JSON for programs and web apps, and Markdown for GitHub job summaries and pull request comments.</p>
+        </div>
+        <div class="card">
+          <h3>CLI and library</h3>
+          <p>One package. The <code>dsv</code> command for scripts and CI, and a TypeScript API that runs in Node and in the browser.</p>
+        </div>
+        <div class="card">
+          <h3>Rules across files</h3>
+          <p>SHACL checks one record at a time. Cross-checks add rules over a whole batch, such as unique identifiers.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="quick-start">
+      <h2 id="quick-start">Quick start: command line</h2>
+      <p>Requires <a href="https://nodejs.org/">Node.js</a> 22 or later. There is nothing to configure.</p>
+      <ol class="steps">
+        <li>
+          Validate a document against a shapes file:
+          <pre><code>npx @theodi/data-standard-validator -s person-shape.ttl person.json</code></pre>
+        </li>
+        <li>
+          If your data is plain JSON, or names a context you want to replace, supply one:
+          <pre><code>npx @theodi/data-standard-validator \
+  -s https://example.org/shapes/person-shape.ttl \
+  -c https://example.org/shapes/context.jsonld \
+  data/*.json</code></pre>
+        </li>
+        <li>
+          Use it in a script or CI. The exit code is <code>0</code> when everything conforms
+          and <code>1</code> when it does not. For a GitHub summary:
+          <pre><code>dsv -s shape.ttl data/*.json -f markdown &gt;&gt; "$GITHUB_STEP_SUMMARY"</code></pre>
+        </li>
+      </ol>
+      <p>Install it in a project (<code>npm install -D @theodi/data-standard-validator</code>) and the command is <code>dsv</code>. Every option is in the <a href="cli.html">CLI reference</a>.</p>
+    </section>
+
+    <section aria-labelledby="library">
+      <h2 id="library">Quick start: library</h2>
+<pre><code>import { validate, formatReport } from '@theodi/data-standard-validator'
+
+const report = await validate({
+  shapes: 'https://example.org/shapes/person-shape.ttl',
+  context: 'https://example.org/shapes/context.jsonld',  // optional
+  data: { name: 'upload.json', text: body },
+})
+
+if (!report.conforms) {
+  for (const issue of report.documents[0].issues) {
+    console.log(issue.location.jsonPath, issue.title)
+  }
+}
+
+console.log(formatReport(report, 'markdown'))</code></pre>
+      <p>
+        In Node, sources can be file paths. In the browser, use URLs or inline
+        <code>{ text }</code> and <code>{ json }</code>, and the same code runs unchanged. To validate many
+        documents, call <code>createValidator()</code> once and reuse it. See the
+        <a href="https://github.com/theodi/data-standard-validator/blob/main/docs/api.md">API reference</a>
+        and the <a href="https://github.com/theodi/data-standard-validator/blob/main/docs/report-format.md">report format</a>.
+      </p>
+    </section>
+
+    <section aria-labelledby="how">
+      <h2 id="how">How it works</h2>
+      <ol class="steps">
+        <li><strong>Choose a context.</strong> A context you supply always applies. Otherwise the document's own <code>@context</code> is loaded. A document with neither fails, rather than passing unchecked.</li>
+        <li><strong>Name every node.</strong> Before converting to RDF, each anonymous object gets an internal identity and a record of where it came from. This adds no triples, so verdicts are unchanged.</li>
+        <li><strong>Run SHACL.</strong> A standard engine, <a href="https://github.com/zazuko/rdf-validate-shacl">rdf-validate-shacl</a>, validates the RDF against the shapes.</li>
+        <li><strong>Translate the results.</strong> Focus nodes become JSON paths, IRIs become the field names your context defines, and constraints become sentences built from the shape's own descriptions.</li>
+      </ol>
+      <p class="note">The full explanation is in <a href="https://github.com/theodi/data-standard-validator/blob/main/docs/how-it-works.md">how-it-works.md</a>, and every issue code is in the <a href="https://github.com/theodi/data-standard-validator/blob/main/docs/error-reference.md">error reference</a>.</p>
+    </section>
+
+    <section aria-labelledby="used-by">
+      <h2 id="used-by">In use</h2>
+      <p>
+        The <a href="https://socialcaredata.github.io/validator/">Social Care data validator</a> uses this library
+        to check records against the Social Care MAIS standards, in the browser.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>MIT licensed · © The Open Data Institute</span>
+      <span><a href="https://www.npmjs.com/package/@theodi/data-standard-validator">npm</a> · <a href="https://github.com/theodi/data-standard-validator/issues">Report an issue</a></span>
+    </div>
+  </footer>
+</body>
+</html>

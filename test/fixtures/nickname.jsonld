@@ -1,0 +1,6 @@
+{
+  "@context": "./context.jsonld",
+  "@type": "Person",
+  "name": "Ada Lovelace",
+  "nickname": "Ada"
+}

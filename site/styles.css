@@ -1,0 +1,176 @@
+/*
+ * One stylesheet for the whole site. Colours are tokens so dark mode is a
+ * redefinition, not a second stylesheet.
+ */
+
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --ink: #1d1f24;
+  --muted: #5d6270;
+  --line: #e4e1d9;
+  --accent: #1f5fbf;
+  --accent-ink: #ffffff;
+  --code-bg: #f1efe9;
+  --term-bg: #16181d;
+  --term-ink: #e6e6e6;
+  --term-dim: #8a8f99;
+  --red: #c62f3a;
+  --green: #1d7a46;
+  --cyan: #2a8fa8;
+  --magenta: #a8459c;
+  --yellow: #a26a00;
+  --radius: 10px;
+  --max: 64rem;
+  --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317;
+    --surface: #181b21;
+    --ink: #e8e9ec;
+    --muted: #a0a5b1;
+    --line: #2a2e37;
+    --accent: #7aa7ff;
+    --accent-ink: #0b1220;
+    --code-bg: #20242c;
+    --term-bg: #0b0c0f;
+    --red: #ff6b74;
+    --green: #5fd38d;
+    --cyan: #5cc8e0;
+    --magenta: #e083d6;
+    --yellow: #f0b84d;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #111317;
+  --surface: #181b21;
+  --ink: #e8e9ec;
+  --muted: #a0a5b1;
+  --line: #2a2e37;
+  --accent: #7aa7ff;
+  --accent-ink: #0b1220;
+  --code-bg: #20242c;
+  --term-bg: #0b0c0f;
+  --red: #ff6b74;
+  --green: #5fd38d;
+  --cyan: #5cc8e0;
+  --magenta: #e083d6;
+  --yellow: #f0b84d;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.6 var(--sans);
+}
+
+a { color: var(--accent); text-underline-offset: 0.2em; }
+
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 16px; }
+
+/* Header ----------------------------------------------------------------- */
+
+.site-header { border-bottom: 1px solid var(--line); }
+.site-header .wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; padding-block: 0.9rem;
+}
+.brand { font-weight: 700; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 500; }
+nav ul { display: flex; gap: 1.25rem; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+nav a { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+nav a:hover, nav a[aria-current="page"] { color: var(--ink); }
+
+/* Type ------------------------------------------------------------------- */
+
+h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 0 0 1rem; }
+h2 { font-size: 1.6rem; margin: 3.5rem 0 1rem; }
+h3 { font-size: 1.1rem; margin: 2rem 0 0.5rem; }
+p, li { max-width: 42rem; }
+.lede { font-size: 1.2rem; color: var(--muted); max-width: 38rem; }
+
+code, pre { font-family: var(--mono); font-size: 0.9em; }
+:not(pre) > code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+pre {
+  background: var(--code-bg); padding: 1rem 1.1rem; border-radius: var(--radius);
+  overflow-x: auto; line-height: 1.5; margin: 1rem 0;
+}
+
+/* Hero ------------------------------------------------------------------- */
+
+.hero { padding: 4rem 0 1rem; }
+.hero .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1.5rem 0 2.5rem; }
+.button {
+  display: inline-block; padding: 0.6rem 1.1rem; border-radius: 8px;
+  text-decoration: none; font-weight: 600; border: 1px solid var(--line);
+  color: var(--ink); background: var(--surface);
+}
+.button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+.install {
+  display: inline-flex; align-items: center; gap: 0.75rem;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 0.55rem 0.9rem; font-family: var(--mono); font-size: 0.9rem; max-width: 100%;
+  overflow-x: auto; white-space: nowrap;
+}
+.install::before { content: "$"; color: var(--muted); }
+
+/* The terminal mock-up: the before/after is the whole pitch. */
+.term {
+  background: var(--term-bg); color: var(--term-ink); border-radius: var(--radius);
+  padding: 1.1rem 1.2rem; font: 0.85rem/1.55 var(--mono); overflow-x: auto;
+  white-space: pre; box-shadow: 0 1px 0 var(--line), 0 18px 40px -24px rgb(0 0 0 / 0.45);
+}
+.term .dim { color: var(--term-dim); }
+.term .red { color: var(--red); }
+.term .green { color: var(--green); }
+.term .cyan { color: var(--cyan); }
+.term .mag { color: var(--magenta); }
+.term b { color: #fff; }
+
+/* Stacked, not side by side: the readable version has long lines, and
+   clipping them would undercut the point being made. */
+.compare { display: grid; gap: 1.25rem; margin: 1.5rem 0; }
+.compare figure { margin: 0; min-width: 0; }
+.compare figcaption { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.5rem; }
+
+/* Cards and tables -------------------------------------------------------- */
+
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); margin: 1.5rem 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.2rem; }
+.card h3 { margin-top: 0; }
+.card p { margin-bottom: 0; color: var(--muted); }
+
+.steps { counter-reset: step; list-style: none; padding: 0; }
+.steps li { counter-increment: step; position: relative; padding-left: 2.5rem; margin: 0.9rem 0; }
+.steps li::before {
+  content: counter(step); position: absolute; left: 0; top: 0.05rem;
+  width: 1.7rem; height: 1.7rem; border-radius: 50%; display: grid; place-items: center;
+  background: var(--code-bg); font-size: 0.85rem; font-weight: 700;
+}
+
+.table-wrap { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+td code { white-space: nowrap; }
+
+.note { border-left: 3px solid var(--accent); padding: 0.25rem 0 0.25rem 1rem; color: var(--muted); }
+
+/* Footer ----------------------------------------------------------------- */
+
+footer { border-top: 1px solid var(--line); margin-top: 5rem; padding: 2rem 0 3rem; color: var(--muted); font-size: 0.9rem; }
+footer .wrap { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }

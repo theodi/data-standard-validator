@@ -1,0 +1,29 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex: <https://example.org/> .
+
+ex:PersonShape a sh:NodeShape ;
+  sh:targetClass ex:Person ;
+  sh:property [
+    sh:path ex:name ;
+    sh:minCount 1 ; sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:description "The person's full name." ;
+  ] , [
+    sh:path ex:age ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:integer ;
+    sh:minInclusive 0 ;
+  ] , [
+    sh:path ex:status ;
+    sh:in ( ex:Active ex:Inactive ) ;
+  ] .
+
+ex:AddressShape a sh:NodeShape ;
+  sh:targetClass ex:Address ;
+  sh:property [
+    sh:path ex:postcode ;
+    sh:minCount 1 ;
+    sh:pattern "^[A-Z]{2}[0-9]$" ;
+    sh:description "A short postcode (e.g. AB1)." ;
+  ] .

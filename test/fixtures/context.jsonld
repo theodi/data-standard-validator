@@ -1,0 +1,16 @@
+{
+  "@context": {
+    "ex": "https://example.org/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "Person": "ex:Person",
+    "Address": "ex:Address",
+    "name": "ex:name",
+    "nickname": "ex:nickname",
+    "age": { "@id": "ex:age", "@type": "xsd:integer" },
+    "status": { "@id": "ex:status", "@type": "@vocab" },
+    "Active": "ex:Active",
+    "Inactive": "ex:Inactive",
+    "address": { "@id": "ex:address", "@container": "@set" },
+    "postcode": "ex:postcode"
+  }
+}

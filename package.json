@@ -1,0 +1,62 @@
+{
+  "name": "@theodi/data-standard-validator",
+  "version": "0.1.0",
+  "description": "Validate JSON and JSON-LD documents against SHACL shapes, with plain-English errors that point at the JSON path and line.",
+  "license": "MIT",
+  "author": "The Open Data Institute",
+  "homepage": "https://theodi.github.io/data-standard-validator/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theodi/data-standard-validator.git"
+  },
+  "bugs": "https://github.com/theodi/data-standard-validator/issues",
+  "keywords": ["shacl", "json-ld", "validation", "rdf", "data-standards", "linked-data", "cli"],
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "dsv": "./dist/cli.js",
+    "data-standard-validator": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/node.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/cli.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@rdfjs/types": "^1.1.2",
+    "commander": "^12.1.0",
+    "jsonc-parser": "^3.3.1",
+    "jsonld": "^8.3.2",
+    "n3": "^1.17.4",
+    "picocolors": "^1.1.1",
+    "rdf-ext": "^2.5.1",
+    "rdf-validate-shacl": "^0.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

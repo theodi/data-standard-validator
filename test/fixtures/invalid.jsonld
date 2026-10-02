@@ -1,0 +1,7 @@
+{
+  "@context": "./context.jsonld",
+  "@type": "Person",
+  "age": -1,
+  "status": "ex:Retired",
+  "address": [{ "@type": "Address", "postcode": "nope" }]
+}
