@@ -2,7 +2,7 @@
 
 Validate JSON and JSON-LD documents against [SHACL](https://www.w3.org/TR/shacl/)
 shapes. Problems are explained in plain English and point at the JSON path and
-line where they occur.
+line where they occur. Reports can be output as text, JSON, or Markdown.
 
 **[Documentation site](https://theodi.github.io/data-standard-validator/)** ·
 [CLI reference](docs/cli.md) · [Library API](docs/api.md) ·

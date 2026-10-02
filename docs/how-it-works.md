@@ -43,21 +43,13 @@ assert that the verdicts are identical.
 The synthetic identifiers are internal. The tests also assert that
 `urn:dsv:node:` never appears in any output format.
 
-## Reading the context backwards
+## Choosing a context
 
-Field names come from inverting the JSON-LD context. Two features of real
-contexts make this worth doing carefully:
-
-- **Type-scoped contexts.** `Name` and `Address` can each declare their own
-  `use` term, so the same IRI has different names depending on the object it
-  is in. The index keeps the scopes apart and prefers the one matching the
-  enclosing `@type`.
-- **`"@type": "@vocab"` term maps.** Enumerations written as token-to-IRI pairs
-  are inverted. An `sh:in` list of five opaque IRIs then becomes "must be one
-  of: usual, official, temp", which are the tokens a user would actually type.
-
-For a missing field there is no key in the document to read. That is exactly
-when the inverted context earns its place.
+A context supplied to the validator always wins. This is what lets one set of
+shapes check documents whose own `@context` points somewhere else, or nowhere.
+Without one, the document's own context is loaded. URLs and relative paths are
+inlined up front, so the naming index sees the whole context. They are cached,
+so a batch naming the same context downloads it once.
 
 ## Saying what is wrong
 
@@ -73,25 +65,3 @@ so that message is used verbatim.
 One mistake often trips several constraints at once. For example, a value
 outside a vocabulary fails both `sh:in` and `sh:class`. Only the more specific
 complaint is kept.
-
-## Choosing a context
-
-A context supplied to the validator always wins. This is what lets one set of
-shapes check documents whose own `@context` points somewhere else, or nowhere.
-Without one, the document's own context is loaded. URLs and relative paths are
-inlined up front, so the naming index sees the whole context. They are cached,
-so a batch naming the same context downloads it once.
-
-## One build per platform, one API
-
-The core never touches the filesystem. Paths are read through an injected
-`readFile`, and URLs through an injected `fetch`. The package's `exports` give
-Node a build that supplies `readFile`, and give bundlers and browsers a build
-without it. Only `src/node.ts` and `src/cli.ts` may import `node:` modules. A
-test enforces this, along with the folder layering:
-
-```text
-rdf  <-  document  <-  report  <-  format
-                           ^
-                           +-----  load
-```
