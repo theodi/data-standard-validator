@@ -6,8 +6,9 @@ line where they occur. Reports can be output as text, JSON, or Markdown.
 
 **[Documentation site](https://theodi.github.io/data-standard-validator/)** ·
 [CLI reference](docs/cli.md) · [Library API](docs/api.md) ·
-[Report format](docs/report-format.md) · [Issue codes](docs/error-reference.md) ·
-[How it works](docs/how-it-works.md)
+[How it works](docs/how-it-works.md) ·
+[Web component](https://github.com/theodi/data-standard-validator-component) ·
+[Web demo](https://theodi.github.io/data-standard-validator-demo/)
 
 ## Install
 
