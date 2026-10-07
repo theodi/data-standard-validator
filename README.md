@@ -82,6 +82,13 @@ const result = await validator.validate({ name: 'upload.json', text: body })
 The same API works in the browser. There, sources are URLs or inline
 `{ text }` / `{ json }` objects. See the [API reference](docs/api.md).
 
+## Web component
+
+[data-standard-validator-component](https://github.com/theodi/data-standard-validator-component)
+is a web component that provides a validation user interface on top of this
+library. See the [demo](https://theodi.github.io/data-standard-validator-demo/)
+for it in action and an example of how to use it.
+
 ## Development
 
 ```bash

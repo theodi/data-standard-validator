@@ -178,6 +178,11 @@ const report = await validator.validateAll([{ name: 'pasted', text: textarea.val
   ;(globalThis as { window?: unknown }).window ??= globalThis
   ```
 
+For a ready-made validation user interface, use the
+[data-standard-validator-component](https://github.com/theodi/data-standard-validator-component)
+web component. The [demo](https://theodi.github.io/data-standard-validator-demo/)
+shows it in use.
+
 ## TypeScript
 
 Types ship with the package. The exported types are `Source`,
