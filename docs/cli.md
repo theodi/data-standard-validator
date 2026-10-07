@@ -72,7 +72,7 @@ report.
 
 ### `json`
 
-The report exactly as the library returns it. The structure is documented in
+The structure is documented in
 [report-format.md](report-format.md) and is stable within a major version.
 
 ```bash
