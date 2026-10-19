@@ -1,12 +1,11 @@
 /*
  * SHACL constraint components, rendered as sentences.
  *
- * The generated shapes declare no `sh:message` at all, so the strings a SHACL
- * engine produces ("Less than 1 values") are its own generic defaults and are
- * not worth parsing. Shapes usually do declare `sh:description`s and, of
- * course, the constraint parameters themselves - so the wording is built from
- * the source shape instead. A shape that carries its own `sh:message` is the
- * exception: somebody wrote it for people, and it is used verbatim.
+ * The strings a SHACL engine produces ("Less than 1 values") are its own
+ * generic defaults and are not worth parsing. Shapes usually do declare
+ * `sh:description`s and, of course, the constraint parameters themselves - so
+ * the wording is built from the source shape instead. A shape that carries its
+ * own `sh:message` was written for people, and it is used verbatim.
  */
 
 import type { ShapeFacts } from './shape-facts.js'
@@ -51,9 +50,10 @@ export function friendlyDatatype (iri: string | undefined): string {
 }
 
 /*
- * Describing a regex in words is not a solved problem, so callers supply the
- * handful of patterns their shapes actually use. Anything else falls back to
- * the shape's own `sh:description`.
+ * Describing a regex in words is not a solved problem. A shape's own
+ * `sh:message` says it best; failing that, callers supply the handful of
+ * patterns their shapes actually use. Anything else falls back to the shape's
+ * own `sh:description`.
  */
 function describePattern (
   pattern: string, hints: readonly PatternHint[],
@@ -136,6 +136,8 @@ export function describeConstraint (input: MessageInput): Message {
     }
 
     case 'PatternConstraintComponent': {
+      const title = `${name} is not in the expected format${quoted(value)}`
+      if (facts.message !== undefined) return { code: 'bad-format', title, hint: facts.message }
       const described = facts.pattern !== undefined
         ? describePattern(facts.pattern, input.patterns ?? [])
         : undefined
@@ -143,7 +145,7 @@ export function describeConstraint (input: MessageInput): Message {
       const what = described?.description ?? withoutExample(facts.description) ?? 'the expected format'
       return {
         code: 'bad-format',
-        title: `${name} is not in the expected format${quoted(value)}`,
+        title,
         hint: example !== undefined
           ? `It should be ${what}, for example \`${example}\`.`
           : `It should be ${what}.`,

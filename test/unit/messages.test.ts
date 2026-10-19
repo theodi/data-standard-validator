@@ -47,6 +47,19 @@ describe('describeConstraint', () => {
     expect(out.hint).toBe('It should be three letters, each A, E or U, for example `AEU`.')
   })
 
+  test("a shape's own sh:message wins over a caller-supplied pattern hint", () => {
+    const out = describeConstraint({
+      constraint: 'PatternConstraintComponent',
+      term: 'code',
+      facts: { pattern: '^[AEU]{3}$', message: 'Use three letters, each one A, E or U - for example `AEU`.' },
+      value: 'XYZ',
+      patterns: [{ pattern: '^[AEU]{3}$', description: 'three letters, each A, E or U', example: 'AEU' }],
+    })
+    expect(out.code).toBe('bad-format')
+    expect(out.title).toContain('XYZ')
+    expect(out.hint).toBe('Use three letters, each one A, E or U - for example `AEU`.')
+  })
+
   test('an unrecognised pattern falls back to the shape description', () => {
     const out = describeConstraint({
       constraint: 'PatternConstraintComponent',

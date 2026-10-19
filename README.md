@@ -4,6 +4,14 @@ Validate JSON and JSON-LD documents against [SHACL](https://www.w3.org/TR/shacl/
 shapes. Problems are explained in plain English and point at the JSON path and
 line where they occur. Reports can be output as text, JSON, or Markdown.
 
+SHACL engines such as [rdf-validate-shacl](https://github.com/zazuko/rdf-validate-shacl)
+and [shacl-engine](https://www.npmjs.com/package/shacl-engine) take an RDF
+dataset and return a SHACL validation report made of IRIs and blank node IDs.
+This library sits on top of one: it uses rdf-validate-shacl under the hood, and
+adds the parts around it. It turns JSON into RDF via a JSON-LD context, maps
+each result back to a JSON path and line (`address[0].postcode`, not `_:b3`),
+words it from the shape's own descriptions, and ships a CLI and report formats.
+
 **[Documentation site](https://theodi.github.io/data-standard-validator/)** ·
 [CLI reference](docs/cli.md) · [Library API](docs/api.md) ·
 [How it works](docs/how-it-works.md) ·

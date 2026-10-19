@@ -70,9 +70,9 @@ x postcode is not in the expected format - you gave nope
   It should be a short postcode, for example `AB1`.
 ```
 
-The hint is built from the shape's `sh:description`, or from a
-[pattern hint](api.md#pattern-hints) if you supplied one. The regex itself
-stays in `technical`.
+The hint is the shape's own `sh:message` if it has one. Otherwise it comes
+from a [pattern hint](api.md#pattern-hints) if you supplied one, and failing
+that from the shape's `sh:description`. The regex itself stays in `technical`.
 
 ## `wrong-type`
 

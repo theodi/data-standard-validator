@@ -102,8 +102,11 @@ Issue `title`s and `hint`s use two bits of inline markup: `` `code` `` and
 ## Pattern hints
 
 A regex is hard to describe in words, so the library does not try. When an
-`sh:pattern` fails, the hint is built from the shape's `sh:description`, using
-any `(e.g. ...)` in it as the example. To say it better, name your patterns:
+`sh:pattern` fails and the property shape has an `sh:message`, that message is
+the hint, word for word. Put the wording there when you control the shapes.
+Otherwise the hint is built from the shape's `sh:description`, using any
+`(e.g. ...)` in it as the example. To say it better without touching the
+shapes, name your patterns:
 
 ```ts
 const validator = await createValidator({

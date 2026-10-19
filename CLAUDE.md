@@ -102,7 +102,8 @@ than 1 values") are its own defaults. Read the source shape's
 `sh:description` and constraint parameters via `src/report/shape-facts.ts`.
 
 **Nothing domain-specific lives here.** Wording for a particular standard's
-regexes arrives through the `patterns` option, and multi-document rules through
+regexes arrives in the shapes as `sh:message`, or through the `patterns` option
+when the shapes have none, and multi-document rules through
 `crossChecks`. The Social Care validator (SocialCareData/validator) is the
 reference consumer.
 

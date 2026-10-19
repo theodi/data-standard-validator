@@ -2,10 +2,9 @@
  * Reading the constraint back off the shape that raised it.
  *
  * rdf-validate-shacl hands us a generic message - "Less than 1 values",
- * "Value does not match pattern ..." - because the generated shapes declare no
- * `sh:message` of their own (verified: zero across the published shapes). What
- * they *do* declare is plenty of `sh:description`s, plus the constraint
- * parameters themselves. Going back to the source shape and reading
+ * "Value does not match pattern ..." - unless a shape declares an `sh:message`
+ * of its own, and few do. What shapes *do* declare is plenty of
+ * `sh:description`s, plus the constraint parameters themselves. Going back to the source shape and reading
  * `sh:description`, `sh:minCount`, `sh:in` and friends is what lets us say
  * "must be one of: usual, official, temp" instead of quoting four IRIs.
  */

@@ -56,6 +56,19 @@ describe('validate', () => {
     expect(postcode.hint).toBe('It should be two capitals then a digit, for example `XY1`.')
   })
 
+  test("a shape's own sh:message replaces pattern hints", async () => {
+    const report = await validate({
+      shapes: {
+        text: fixtureText('person-shape.ttl')
+          .replace('sh:pattern', 'sh:message "Use two capitals then a digit - for example `XY1`." ;\n    sh:pattern'),
+      },
+      data: fixture('invalid.jsonld'),
+      patterns: [{ pattern: '^[A-Z]{2}[0-9]$', description: 'a short postcode', example: 'AB1' }],
+    })
+    const postcode = report.documents[0]!.issues.find((i) => i.code === 'bad-format')!
+    expect(postcode.hint).toBe('Use two capitals then a digit - for example `XY1`.')
+  })
+
   test('several shapes files are merged', async () => {
     const data = fixture('nickname.jsonld')
     expect((await validate({ shapes, data })).conforms).toBe(true)
