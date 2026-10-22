@@ -18,7 +18,6 @@ import type { CrossCheckReport, DocumentReport, Issue, PatternHint, RunReport, S
 import { ContextLoader, type LoadedContext } from './load/context.js'
 import { loadShapes, type LoadedShapes } from './load/shapes.js'
 import { readSource, type Environment, type Source } from './load/sources.js'
-import type { DatasetCore } from '@rdfjs/types'
 import type { Dataset } from 'rdf-ext'
 
 export interface ValidatorOptions extends Environment {
@@ -64,7 +63,7 @@ class ShaclValidator implements Validator {
   readonly skolemSafe: boolean
   readonly setup: RunReport['setup']
 
-  private readonly engine: { validate(data: Dataset): { conforms: boolean, results: never[] } }
+  private readonly engine: ReturnType<typeof createShaclValidator>
   private readonly useSkolem: boolean
 
   constructor (
@@ -73,7 +72,7 @@ class ShaclValidator implements Validator {
     private readonly loader: ContextLoader,
     private readonly options: ValidatorOptions,
   ) {
-    this.engine = createShaclValidator(shapes.dataset) as never
+    this.engine = createShaclValidator(shapes.dataset)
     this.skolemSafe = shapes.skolemSafe
     // A shape demanding blank nodes would be broken by skolemization, so the
     // loader's finding overrides the caller.
@@ -95,7 +94,7 @@ class ShaclValidator implements Validator {
 
     for (const input of inputs) {
       const { report, dataset } = await this.run(input)
-      if (dataset) crossDocs.push({ name: report.document, dataset: dataset as unknown as DatasetCore })
+      if (dataset) crossDocs.push({ name: report.document, dataset })
       documents.push(report)
     }
 
@@ -159,7 +158,7 @@ class ShaclValidator implements Validator {
     }
 
     const dataset = await toDataset(document, chosen.context, this.loader.documentLoader)
-    const shaclReport = this.engine.validate(dataset)
+    const shaclReport = await this.engine.validate(dataset)
 
     const issues = buildIssues(shaclReport.results, {
       document: name,

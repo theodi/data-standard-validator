@@ -63,7 +63,7 @@ export async function toDataset (
   const nquads = await jsonld.toRDF(input, {
     format: 'application/n-quads',
     documentLoader,
-  }) as unknown as string
+  })
 
   return parseNQuads(nquads)
 }

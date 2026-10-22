@@ -85,8 +85,9 @@ above them. `test/architecture.test.ts` enforces the layering, the absence of
 cycles and the `node:` rule.
 
 **The published `.d.ts` must not mention rdf-ext, n3, jsonld or
-rdf-validate-shacl.** They have no types, and `src/types/vendor.d.ts` is
-ambient, so it does not ship. Public types use `@rdfjs/types`. This is why
+rdf-validate-shacl.** The first three have no types, and `src/types/vendor.d.ts`
+is ambient, so it does not ship; rdf-validate-shacl's own types pull in
+clownface, which consumers lack. Public types use `@rdfjs/types`. This is why
 `Validator` is an interface and the class behind it is not exported.
 
 **Skolemization is load-bearing.** `src/document/skolemize.ts` gives every

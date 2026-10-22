@@ -3,13 +3,13 @@
  */
 
 import SHACLValidator from 'rdf-validate-shacl'
-import type { ValidationReport } from 'rdf-validate-shacl'
+import type { ValidationReport } from 'rdf-validate-shacl/src/validation-report.js'
 import type { Dataset } from 'rdf-ext'
 import { rdf } from './parse.js'
 
 const SH = 'http://www.w3.org/ns/shacl#'
 
-export function createShaclValidator (shapes: Dataset): { validate(data: Dataset): ValidationReport } {
+export function createShaclValidator (shapes: Dataset): { validate(data: Dataset): Promise<ValidationReport> } {
   // No custom factory: rdf-validate-shacl brings its own (clownface-backed)
   // environment, and handing it the rdf-ext one breaks shape traversal.
   return new SHACLValidator(shapes)
