@@ -29,5 +29,5 @@ export interface CrossCheck {
 
 /** An IRI term, for `dataset.match()` inside a cross-check. */
 export function namedNode (iri: string): NamedNode {
-  return rdf.namedNode(iri) as unknown as NamedNode
+  return rdf.namedNode(iri)
 }

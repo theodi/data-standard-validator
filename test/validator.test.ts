@@ -75,6 +75,18 @@ describe('validate', () => {
     const report = await validate({ shapes: [shapes, fixture('rules-shape.ttl')], data })
     expect(codesAndPaths(report.documents[0]!)).toEqual([['too-many-values', 'nickname']])
   })
+
+  test('a sh:targetNode the document never mentions still has to satisfy its shape', async () => {
+    const registry = {
+      text: '@prefix sh: <http://www.w3.org/ns/shacl#> . @prefix ex: <https://example.org/> .\n' +
+        'ex:RegistryShape a sh:NodeShape ; sh:targetNode ex:registry ; sh:property [ sh:path ex:name ; sh:minCount 1 ] .',
+    }
+    const report = await validate({ shapes: [shapes, registry], data: fixture('valid.jsonld') })
+    expect(report.conforms).toBe(false)
+    const [issue] = report.documents[0]!.issues
+    expect([issue?.code, issue?.location.jsonPath]).toEqual(['required-field-missing', '$'])
+    expect(issue?.technical.focusNode).toBe('https://example.org/registry')
+  })
 })
 
 describe('contexts', () => {

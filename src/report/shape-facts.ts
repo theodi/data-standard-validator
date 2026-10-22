@@ -11,7 +11,7 @@
 
 import { rdf } from '../rdf/parse.js'
 import type { Dataset } from 'rdf-ext'
-import type { Term } from 'n3'
+import type { Term } from '@rdfjs/types'
 
 const SH = 'http://www.w3.org/ns/shacl#'
 const RDF_FIRST = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#first'

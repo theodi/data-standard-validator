@@ -13,7 +13,7 @@ import { isSkolemIri, type NodeLocation, type SourceMap } from '../document/skol
 import { emptyCounts, type DocumentReport, type Issue, type Location, type PatternHint, type Severity } from './types.js'
 import type { ContextIndex } from '../document/context-index.js'
 import type { Dataset } from 'rdf-ext'
-import type { ValidationResult } from 'rdf-validate-shacl'
+import type { ValidationResult } from 'rdf-validate-shacl/src/validation-report.js'
 
 export interface BuildContext {
   document: string
