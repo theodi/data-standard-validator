@@ -61,10 +61,10 @@ test/                   vitest; all offline
   cli.test.ts           builds dist/, then runs `node dist/cli.js` as a user would
   architecture.test.ts  layering, no cycles, the node: rule
 
-docs/                   the documentation site source (MkDocs); pages.yml copies README.md in as index.md
+docs/                   the documentation site source (MkDocs); docs.yml copies README.md in as index.md
   cli.md, api.md, report-format.md, error-reference.md, how-it-works.md
 mkdocs.yml              site config and nav; `mkdocs build` writes site/ (gitignored)
-.github/workflows/      ci.yml (test + packed-tarball smoke test), release.yml (npm), pages.yml
+.github/workflows/      ci.yml (test + packed-tarball smoke test), cd.yml (npm), docs.yml
 ```
 
 `validator.ts` is the only module that reaches into every folder. When adding a
