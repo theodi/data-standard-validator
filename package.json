@@ -1,6 +1,6 @@
 {
   "name": "@theodi/data-standard-validator",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Validate JSON and JSON-LD documents against SHACL shapes, with plain-English errors that point at the JSON path and line.",
   "license": "MIT",
   "author": "The Open Data Institute",
@@ -10,13 +10,21 @@
     "url": "git+https://github.com/theodi/data-standard-validator.git"
   },
   "bugs": "https://github.com/theodi/data-standard-validator/issues",
-  "keywords": ["shacl", "json-ld", "validation", "rdf", "data-standards", "linked-data", "cli"],
+  "keywords": [
+    "shacl",
+    "json-ld",
+    "validation",
+    "rdf",
+    "data-standards",
+    "linked-data",
+    "cli"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "bin": {
-    "data-standard-validator": "./dist/cli.js"
+    "data-standard-validator": "dist/cli.js"
   },
   "exports": {
     ".": {
