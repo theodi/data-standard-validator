@@ -9,10 +9,14 @@ data-standard-validator [options] [documents...]
 ## Running it
 
 ```bash
-npx @theodi/data-standard-validator -s shape.ttl data.json  # no install needed
-npm install -g @theodi/data-standard-validator              # or install globally ...
-npm install -D @theodi/data-standard-validator              # ... or per project, then run `npx data-standard-validator`
+npx --yes @theodi/data-standard-validator -s shape.ttl data.json
+npm install -g @theodi/data-standard-validator
+npm install --save-dev @theodi/data-standard-validator
 ```
+
+The first command runs the package without adding it to the project. After a
+local installation, run it with `npx data-standard-validator`; after a global
+installation, run `data-standard-validator` directly.
 
 Node.js 22 or later is required.
 

@@ -1,14 +1,23 @@
 # Library API
 
+Install the published package in your project:
+
+```bash
+npm install @theodi/data-standard-validator
+```
+
+The package is available on [npm](https://www.npmjs.com/package/@theodi/data-standard-validator).
+
 ```ts
 import {
   validate, createValidator, formatReport, groupIssues,
 } from '@theodi/data-standard-validator'
 ```
 
-The package is ESM-only and needs Node.js 22+ or a modern bundler. Node loads
-a build that can read file paths. Browsers and bundlers load a build without
-any filesystem code. Both have the same API.
+The package is ESM-only and needs Node.js 22+ or a modern bundler. Node.js
+projects can use the package directly; browser projects can import it through
+a bundler. Node loads a build that can read file paths. Browsers and bundlers
+load a build without any filesystem code. Both have the same API.
 
 ## `validate(options)`: one call
 

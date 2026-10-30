@@ -13,6 +13,7 @@ each result back to a JSON path and line (`address[0].postcode`, not `_:b3`),
 words it from the shape's own descriptions, and ships a CLI and report formats.
 
 **[Documentation site](https://theodi.github.io/data-standard-validator/)** ·
+[npm package](https://www.npmjs.com/package/@theodi/data-standard-validator) ·
 [CLI reference](docs/cli.md) · [Library API](docs/api.md) ·
 [How it works](docs/how-it-works.md) ·
 [Web component](https://github.com/theodi/data-standard-validator-component) ·
@@ -23,14 +24,17 @@ words it from the shape's own descriptions, and ships a CLI and report formats.
 Requires Node.js 22 or later.
 
 ```bash
-npm install --save-dev @theodi/data-standard-validator   # in a project
-npx @theodi/data-standard-validator --help                # or run it without installing
+npm install --save-dev @theodi/data-standard-validator
+npx data-standard-validator --help
 ```
+
+For one-off use without adding it to a project, run
+`npx --yes @theodi/data-standard-validator --help`.
 
 ## Example
 
 ```bash
-npx @theodi/data-standard-validator -s person-shape.ttl person.json
+npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json
 ```
 
 ```text
@@ -56,11 +60,11 @@ report as JSON and Markdown.
 ## Command line
 
 ```bash
-npx @theodi/data-standard-validator -s shapes.ttl data.json
+npx data-standard-validator -s shapes.ttl data.json
 ```
 
-Once installed in a project, the command is `data-standard-validator`. The exit
-code is 0 when every document conforms and 1 when one does not. See
+The command is available through `npx` after installation. The exit code is 0
+when every document conforms and 1 when one does not. See
 the [CLI reference](docs/cli.md) for every option, output format and exit code.
 
 ## Library

@@ -47,7 +47,7 @@ And a document, `person.json`, that breaks both rules:
 The default, for terminals:
 
 ```bash
-npx @theodi/data-standard-validator -s person-shape.ttl person.json
+npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json
 ```
 
 ```text
@@ -75,7 +75,7 @@ Add `--format json` to get the same report as data, for programs and web
 pages. The fields are described in [Report format](report-format.md).
 
 ```bash
-npx @theodi/data-standard-validator -s person-shape.ttl person.json --format json
+npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json --format json
 ```
 
 ```json
@@ -166,7 +166,7 @@ npx @theodi/data-standard-validator -s person-shape.ttl person.json --format jso
 Add `--format markdown` for GitHub job summaries and pull request comments:
 
 ```bash
-npx @theodi/data-standard-validator -s person-shape.ttl person.json --format markdown
+npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json --format markdown
 ```
 
 ````markdown
