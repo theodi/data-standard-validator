@@ -26,7 +26,7 @@ declare module 'jsonld' {
 }
 
 declare module 'rdf-ext' {
-  import type { DatasetCore, NamedNode, Quad, Term } from '@rdfjs/types'
+  import type { BlankNode, DatasetCore, Literal, NamedNode, Quad, Quad_Object, Quad_Predicate, Quad_Subject, Term } from '@rdfjs/types'
   export interface Dataset extends DatasetCore {
     addAll(quads: Iterable<Quad>): Dataset
     match(subject?: Term | null, predicate?: Term | null, object?: Term | null, graph?: Term | null): Dataset
@@ -34,6 +34,9 @@ declare module 'rdf-ext' {
   export interface RdfEnvironment {
     dataset(quads?: Iterable<Quad>): Dataset
     namedNode(value: string): NamedNode
+    blankNode(value?: string): BlankNode
+    literal(value: string, languageOrDatatype?: string | NamedNode): Literal
+    quad(subject: Quad_Subject, predicate: Quad_Predicate, object: Quad_Object): Quad
   }
   const environment: RdfEnvironment
   export default environment

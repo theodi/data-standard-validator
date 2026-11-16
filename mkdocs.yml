@@ -1,5 +1,5 @@
 site_name: Data Standard Validator
-site_description: Check JSON and JSON-LD against SHACL shapes, and say what is wrong in plain English.
+site_description: Check JSON, JSON-LD and CSV against SHACL shapes, and say what is wrong in plain English.
 site_author: The Open Data Institute
 site_url: https://theodi.github.io/data-standard-validator/
 repo_url: https://github.com/theodi/data-standard-validator
@@ -25,6 +25,9 @@ markdown_extensions:
 nav:
   - Overview: index.md
   - Example: example.md
+  - Formats:
+      - JSON and JSON-LD: json.md
+      - CSV: csv.md
   - Command line: cli.md
   - Library API: api.md
   - Report format: report-format.md

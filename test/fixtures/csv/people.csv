@@ -1,0 +1,6 @@
+"full_name
+The person's full name.","age","status
+
+Options: Active, Inactive",postcode,member,joined,roles
+Ada Lovelace,36,active,AB1,Yes,10/12/1815,Admin; editor
+Grace Hopper,85,N/A,,No,09/12/1906,

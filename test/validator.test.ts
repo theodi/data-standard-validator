@@ -162,9 +162,10 @@ describe('sources', () => {
     await expect(createValidator({ shapes: fixture('nope.ttl') })).rejects.toBeInstanceOf(NotFoundError)
   })
 
-  test('invalid JSON is a parse error, not an exception', async () => {
+  test('invalid JSON is a parse error at the place it broke, not an exception', async () => {
     const report = await validate({ shapes, data: fixture('broken.json') })
     expect(report.documents[0]!.issues.map((i) => i.code)).toEqual(['parse-error'])
+    expect(report.documents[0]!.issues[0]!.location).toMatchObject({ line: 1, column: 43 })
   })
 })
 
@@ -201,6 +202,18 @@ describe('skolemization', () => {
     const shapesBoth = [shapes, fixture('rules-shape.ttl')]
     const on = await validate({ shapes: shapesBoth, data: documents })
     const off = await validate({ shapes: shapesBoth, data: documents, skolemize: false })
+    expect(off.documents.map((d) => d.conforms)).toEqual(on.documents.map((d) => d.conforms))
+    expect(off.documents.map((d) => d.counts)).toEqual(on.documents.map((d) => d.counts))
+  })
+
+  test('never changes a CSV verdict either', async () => {
+    const csv = {
+      shapes: [shapes, fixture('csv/membership-shape.ttl')],
+      csvMetadata: fixture('csv/people-csv-metadata.json'),
+      data: [fixture('csv/people.csv'), fixture('csv/people-invalid.csv')],
+    }
+    const on = await validate(csv)
+    const off = await validate({ ...csv, skolemize: false })
     expect(off.documents.map((d) => d.conforms)).toEqual(on.documents.map((d) => d.conforms))
     expect(off.documents.map((d) => d.counts)).toEqual(on.documents.map((d) => d.counts))
   })

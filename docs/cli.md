@@ -24,9 +24,10 @@ Node.js 22 or later is required.
 
 | Option | Description |
 | --- | --- |
-| `[documents...]` | The JSON or JSON-LD documents to check: file paths or `http(s)` URLs. With none, or with a single `-`, the document is read from stdin. |
+| `[documents...]` | The documents to check: file paths or `http(s)` URLs, in any mix of [formats](#formats). With none, or with a single `-`, a JSON document is read from stdin. |
 | `-s, --shapes <source>` | **Required.** A SHACL shapes file in Turtle, as a path or URL. Repeat the option to merge several files, e.g. a generated shape plus hand-written rules. |
-| `-c, --context <source>` | A JSON-LD context, as a path or URL. When given, it **replaces** each document's own `@context`. |
+| `-c, --context <source>` | For JSON documents: a JSON-LD context, as a path or URL. When given, it **replaces** each document's own `@context`. See [JSON and JSON-LD](json.md#the-context). |
+| `--csv-metadata <source>` | For CSV documents: CSVW metadata, as a path or URL, saying how each row maps to RDF. See [CSV](csv.md#the-metadata). |
 | `-f, --format <format>` | `text` (default), `json` or `markdown`. |
 | `-o, --output <file>` | Write the report to a file instead of stdout. |
 | `--no-color` | Plain text even in a terminal. Colour is also off when output is not a terminal, or when `NO_COLOR` is set. |
@@ -36,30 +37,26 @@ Node.js 22 or later is required.
 All documents given in one command are validated together. Any cross-document
 checks see the whole batch, and the exit code covers all of them.
 
-## How `@context` is chosen
+## Formats
 
-JSON-LD needs a context to turn JSON keys into the IRIs the shapes talk about.
-For each document:
+Each document's format comes from its extension. Anything else is refused with
+exit code `2`, before any shapes are loaded.
 
-1. If you pass `--context`, it is used. A note in the report says whether it
-   was added (`assumed-context`) or replaced the document's own
-   (`substituted-context`).
-2. Otherwise, the document's own `@context` is used. A URL or a relative path
-   (`"@context": "./context.jsonld"`) is loaded, resolved against the
-   document's location.
-3. If there is no context at all, the document **fails** with `no-context`. A
-   plain JSON document read without a context produces no RDF. Calling it
-   "valid" would mean nothing had been checked.
+| Format | Extensions | Needs | Problems are reported at | Guide |
+| --- | --- | --- | --- | --- |
+| JSON and JSON-LD | `.json`, `.jsonld` | a JSON-LD context: `--context`, or the document's own `@context` | the JSON path and line | [JSON and JSON-LD](json.md) |
+| CSV | `.csv` | CSVW metadata: `--csv-metadata` | the row, column and line | [CSV](csv.md) |
 
-Use `--context` when your data is plain JSON, or when the context it names is
-not the one that matches the shapes.
+A document without what its format needs **fails** (`no-context`,
+`no-csv-metadata`) rather than passing with nothing checked. Stdin is always
+read as JSON.
 
 ## Output formats
 
 ### `text` (default)
 
-For people at a terminal. Problems are grouped by the object they are about,
-with the offending line and a caret under the value:
+For people at a terminal. Problems are grouped by the object they are about (in
+a CSV file, by row), with the offending line and a caret under the value:
 
 ```text
 person.json -> fails
@@ -98,8 +95,8 @@ data-standard-validator -s shape.ttl data/*.json -f markdown >> "$GITHUB_STEP_SU
 | Code | Meaning |
 | --- | --- |
 | `0` | Every document conforms. |
-| `1` | Problems were found, including a document that is not valid JSON. |
-| `2` | Bad usage: an unknown option, or no `--shapes`. |
+| `1` | Problems were found, including a document that is not valid JSON or CSV. |
+| `2` | Bad usage: an unknown option, no `--shapes`, or a document whose extension is not `.json`, `.jsonld` or `.csv`. |
 | `3` | A shapes file, context or document could not be loaded: a missing file, a network failure, an HTTP error, or shapes that are not valid Turtle. |
 
 Exit code `1` follows SHACL's own definition of conformance. A result of any
@@ -113,6 +110,16 @@ run.
 
 ```bash
 data-standard-validator -s shapes/person.ttl -c shapes/context.jsonld data/*.json
+data-standard-validator -s shapes/person.ttl --csv-metadata shapes/csv-metadata.json data/*.csv
+```
+
+**Validate JSON and CSV together.** Give both the context and the metadata, and
+each document is read by its extension. One report and one exit code cover the
+batch:
+
+```bash
+data-standard-validator -s shapes/person.ttl -c shapes/context.jsonld \
+  --csv-metadata shapes/csv-metadata.json data/*.json data/*.csv
 ```
 
 **Validate against shapes published on the web.** Pin a tag or commit in the
@@ -128,8 +135,9 @@ data-standard-validator -s https://raw.githubusercontent.com/org/repo/v1.2.0/per
 curl -s https://example.org/api/person/42 | data-standard-validator -s person-shape.ttl -c context.jsonld
 ```
 
-When reading from stdin there is no file location, so a relative `@context` in
-the document cannot be resolved. Pass `--context` instead.
+Stdin is always read as JSON; save CSV to a `.csv` file to validate it. A
+document from stdin has no location, so a relative `@context` in it cannot be
+resolved. Pass `--context` instead.
 
 **GitHub Actions**
 
@@ -153,17 +161,13 @@ file first and then append it:
 
 ## Troubleshooting
 
-**"This document has no @context, so nothing in it could be checked."** Pass
-`--context`, or add an `@context` to the document.
+Problems specific to one format, such as a missing context, a column that is
+not found, or everything passing unexpectedly, are covered in each format's
+guide: [JSON and JSON-LD](json.md#troubleshooting) and
+[CSV](csv.md#troubleshooting).
 
-**Everything passes, but you expected failures.** Check that the shapes target
-what your documents contain. A shape with `sh:targetClass ex:Person` only
-checks nodes with `"@type": "Person"`, and only if your context maps `Person`
-to `ex:Person`. Keys the context does not define are silently dropped by
-JSON-LD.
-
-**Field names are shown as IRIs or compact IRIs.** The context in use does not
-define a term for that property. Add one to the context.
+**Exit code 2 with `.xyz files are not supported`.** Documents must end in
+`.json`, `.jsonld` or `.csv`. Rename the file, or pipe JSON in on stdin.
 
 **An issue has code `other`.** The constraint has no plain-English description
 yet. Run with `-f json` to see the constraint component under `technical`, and

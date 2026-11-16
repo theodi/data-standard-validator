@@ -12,6 +12,9 @@ import type { Issue, RunReport } from '../report/types.js'
 import { shapesLabel, type FormatOptions } from './options.js'
 
 const MAX_ISSUES_PER_DOCUMENT = 50
+/** Longest source line a code frame shows whole, and how much leads up to the caret. */
+const FRAME_WIDTH = 100
+const FRAME_CONTEXT = 30
 
 function paint (enabled: boolean) {
   const id = (s: string): string => s
@@ -38,16 +41,26 @@ function codeFrame (issue: Issue, source: string | undefined, c: Palette): strin
   // parse error.
   if (issue.code === 'required-field-missing') return []
 
-  const line = source.split('\n')[issue.location.line - 1]
-  if (line === undefined) return []
+  const full = source.split('\n')[issue.location.line - 1]?.replace(/\s+$/, '')
+  if (full === undefined) return []
 
-  const column = issue.location.column ?? 1
+  let column = issue.location.column ?? 1
   const width = issue.location.endLine === issue.location.line && issue.location.endColumn !== undefined
     ? Math.max(1, issue.location.endColumn - column)
     : 1
+
+  // A CSV record is often one very long line; show the stretch around the cell.
+  let line = full
+  if (full.length > FRAME_WIDTH) {
+    const start = Math.max(0, Math.min(column - 1 - FRAME_CONTEXT, full.length - FRAME_WIDTH))
+    const end = Math.min(full.length, start + FRAME_WIDTH)
+    line = `${start > 0 ? '...' : ''}${full.slice(start, end)}${end < full.length ? '...' : ''}`
+    column = column - start + (start > 0 ? 3 : 0)
+  }
+
   const gutter = String(issue.location.line).padStart(5)
   return [
-    `${c.dim(gutter)} ${c.dim('|')} ${line.replace(/\s+$/, '')}`,
+    `${c.dim(gutter)} ${c.dim('|')} ${line}`,
     `${' '.repeat(5)} ${c.dim('|')} ${' '.repeat(Math.max(0, column - 1))}${c.red('^'.repeat(Math.min(width, 60)))}`,
   ]
 }

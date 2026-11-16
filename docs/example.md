@@ -1,12 +1,12 @@
 # Example
 
-One shape, one document with two problems, and the report in each of the
-three output formats.
+One shape, checked against a JSON document and a CSV file that make the same
+two mistakes. The issues read the same, and each is reported where it is in its
+own format. The last sections show the report as JSON and as Markdown.
 
-## The inputs
+## The shape
 
-A shape, `person-shape.ttl`, that says a person needs a name and an age of
-zero or more:
+`person-shape.ttl` says a person needs a name, and an age of zero or more:
 
 ```turtle
 @prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -27,7 +27,10 @@ ex:PersonShape a sh:NodeShape ;
   ] .
 ```
 
-And a document, `person.json`, that breaks both rules:
+## A JSON document
+
+`person.json` has no name and a negative age. Its `@context` says which IRI
+each key stands for (see [JSON and JSON-LD](json.md)):
 
 ```json
 {
@@ -41,10 +44,6 @@ And a document, `person.json`, that breaks both rules:
   "age": -1
 }
 ```
-
-## Text
-
-The default, for terminals:
 
 ```bash
 npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json
@@ -69,10 +68,95 @@ person.json -> fails
 
 The command exits with 1.
 
-## JSON
+## A CSV file
 
-Add `--format json` to get the same report as data, for programs and web
-pages. The fields are described in [Report format](report-format.md).
+`people.csv` has one good row, and a second row with the same two mistakes:
+
+```text
+name,age
+Ada Lovelace,36
+,-1
+```
+
+`csv-metadata.json` says which IRI each column stands for, and that each row is
+a `Person` (see [CSV](csv.md)):
+
+```json
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "tableSchema": {
+    "aboutUrl": "#row-{_row}",
+    "columns": [
+      { "name": "name", "titles": "name", "propertyUrl": "https://example.org/name" },
+      { "name": "age", "titles": "age", "propertyUrl": "https://example.org/age", "datatype": "integer" },
+      { "name": "type", "virtual": true, "propertyUrl": "rdf:type", "valueUrl": "https://example.org/Person" }
+    ]
+  }
+}
+```
+
+```bash
+npx --yes @theodi/data-standard-validator -s person-shape.ttl --csv-metadata csv-metadata.json people.csv
+```
+
+```text
+person-shape.ttl · 1 document(s)
+
+people.csv -> fails
+  in row 2
+    x Missing required field name
+      at row 2, name  line 3
+      Add `name`: The person's full name.
+    x age must be at least 0 - you gave -1
+      at row 2, age  line 3
+          3 | ,-1
+            |  ^^
+
+2 problems
+  1 required field missing, 1 out of range
+```
+
+## Both at once
+
+Give the metadata, and pass both documents. Each is read by its extension, and
+one report covers them:
+
+```bash
+npx --yes @theodi/data-standard-validator -s person-shape.ttl --csv-metadata csv-metadata.json person.json people.csv
+```
+
+```text
+person-shape.ttl · 2 document(s)
+
+person.json -> fails
+  in Person
+    x Missing required field name
+      at name  line 1
+      Add `name`: The person's full name.
+    x age must be at least 0 - you gave -1
+      at age  line 9
+          9 |   "age": -1
+            |          ^^
+
+people.csv -> fails
+  in row 2
+    x Missing required field name
+      at row 2, name  line 3
+      Add `name`: The person's full name.
+    x age must be at least 0 - you gave -1
+      at row 2, age  line 3
+          3 | ,-1
+            |  ^^
+
+4 problems
+  2 required field missing, 2 out of range
+```
+
+## As JSON
+
+Add `--format json` to get the report as data, for programs and web pages. The
+fields are described in [Report format](report-format.md), which also shows
+the same issue from the CSV file.
 
 ```bash
 npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json --format json
@@ -161,22 +245,24 @@ npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json --form
 }
 ```
 
-## Markdown
+## As Markdown
 
-Add `--format markdown` for GitHub job summaries and pull request comments:
+Add `--format markdown` for GitHub job summaries and pull request comments.
+Here it is for both documents at once:
 
 ```bash
-npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json --format markdown
+npx --yes @theodi/data-standard-validator -s person-shape.ttl --csv-metadata csv-metadata.json person.json people.csv --format markdown
 ```
 
 ````markdown
 # person-shape.ttl
 
-❌ **Failed** - 2 problems
+❌ **Failed** - 4 problems
 
 | Document | Result | Problems | Warnings |
 | --- | --- | ---: | ---: |
 | person.json | ❌ fails | 2 | 0 |
+| people.csv | ❌ fails | 2 | 0 |
 
 ## person.json
 
@@ -187,4 +273,14 @@ npx --yes @theodi/data-standard-validator -s person-shape.ttl person.json --form
   - Add `name`: The person's full name.
 - ❌ `age` must be at least 0 - you gave `-1`
   - at `age`, line 9:10
+
+## people.csv
+
+### row 2
+
+- ❌ Missing required field `name`
+  - at `row 2, name`, line 3:1
+  - Add `name`: The person's full name.
+- ❌ `age` must be at least 0 - you gave `-1`
+  - at `row 2, age`, line 3:2
 ````

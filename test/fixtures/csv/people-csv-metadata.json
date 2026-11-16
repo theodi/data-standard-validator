@@ -1,0 +1,50 @@
+{
+  "@context": ["http://www.w3.org/ns/csvw", { "@language": "en" }],
+  "dialect": { "header": true, "trim": true },
+  "https://theodi.github.io/data-standard-validator/ns#headerMatch": "first-line",
+  "tableSchema": {
+    "aboutUrl": "#row-{_row}",
+    "null": ["", "N/A"],
+    "columns": [
+      { "name": "name", "titles": "full_name", "propertyUrl": "https://example.org/name" },
+      { "name": "age", "titles": "age", "propertyUrl": "https://example.org/age", "datatype": "integer" },
+      {
+        "name": "status", "titles": "status", "propertyUrl": "https://example.org/status",
+        "dsv:valueMap": [
+          { "@id": "https://example.org/Active", "skos:prefLabel": "Active", "skos:altLabel": ["On"] },
+          { "@id": "https://example.org/Inactive", "skos:prefLabel": "Inactive" }
+        ]
+      },
+      {
+        "name": "postcode", "titles": "postcode",
+        "aboutUrl": "#row-{_row}/address", "propertyUrl": "https://example.org/postcode"
+      },
+      {
+        "name": "member", "titles": "member", "propertyUrl": "https://example.org/member",
+        "datatype": { "base": "boolean", "format": "Yes|No" }
+      },
+      {
+        "name": "joined", "titles": "joined", "propertyUrl": "https://example.org/joined",
+        "datatype": { "base": "date", "format": "dd/MM/yyyy" }
+      },
+      {
+        "name": "roles", "titles": "roles", "propertyUrl": "https://example.org/role", "separator": ";",
+        "dsv:valueMap": [
+          { "@id": "https://example.org/Admin", "skos:prefLabel": "Admin" },
+          { "@id": "https://example.org/Editor", "skos:prefLabel": "Editor" }
+        ]
+      },
+      {
+        "name": "link_address", "virtual": true,
+        "propertyUrl": "https://example.org/address", "valueUrl": "#row-{_row}/address",
+        "https://theodi.github.io/data-standard-validator/ns#skipIfNodeEmpty": true
+      },
+      {
+        "name": "type_address", "virtual": true, "aboutUrl": "#row-{_row}/address",
+        "propertyUrl": "rdf:type", "valueUrl": "https://example.org/Address",
+        "dsv:skipIfNodeEmpty": true
+      },
+      { "name": "type_row", "virtual": true, "propertyUrl": "rdf:type", "valueUrl": "https://example.org/Person" }
+    ]
+  }
+}

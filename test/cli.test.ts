@@ -63,6 +63,25 @@ describe('data-standard-validator', () => {
     expect(run.stdout).toContain('(stdin) -> passes')
   })
 
+  test('--csv-metadata reads CSV files, reporting by row and column', () => {
+    const csv = [...shapes, '-s', fixture('csv/membership-shape.ttl'), '--csv-metadata', fixture('csv/people-csv-metadata.json')]
+    expect(runCli([...csv, fixture('csv/people.csv')]).status).toBe(0)
+    const run = runCli([...csv, fixture('csv/people-invalid.csv')])
+    expect(run.status).toBe(1)
+    expect(run.stdout).toContain('at row 1, status  line 2')
+    const json = JSON.parse(runCli([...csv, '-f', 'json', fixture('csv/people-invalid.csv')]).stdout)
+    expect(json.setup.csvMetadata).toBe(fixture('csv/people-csv-metadata.json'))
+  })
+
+  test('refuses a document that is not .json, .jsonld or .csv', () => {
+    for (const document of [fixture('person-shape.ttl'), fixture('csv'), 'https://example.test/api/person/42']) {
+      const run = runCli([...shapes, document])
+      expect(run.status).toBe(2)
+      expect(run.stderr).toContain('documents must be JSON (.json, .jsonld) or CSV (.csv)')
+    }
+    expect(runCli([...shapes, fixture('person-shape.ttl')]).stderr).toContain('.ttl files are not supported')
+  })
+
   test('exits 2 on bad usage', () => {
     expect(runCli([fixture('valid.jsonld')]).status).toBe(2)
     expect(runCli([...shapes, '-f', 'yaml', fixture('valid.jsonld')]).status).toBe(2)

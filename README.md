@@ -1,16 +1,18 @@
 # data-standard-validator
 
-Validate JSON and JSON-LD documents against [SHACL](https://www.w3.org/TR/shacl/)
-shapes. Problems are explained in plain English and point at the JSON path and
-line where they occur. Reports can be output as text, JSON, or Markdown.
+Validate JSON, JSON-LD and CSV documents against [SHACL](https://www.w3.org/TR/shacl/)
+shapes. Problems are explained in plain English and point at where they occur:
+the JSON path and line, or the CSV row and column. One set of shapes checks
+both formats, and reports can be output as text, JSON, or Markdown.
 
 SHACL engines such as [rdf-validate-shacl](https://github.com/zazuko/rdf-validate-shacl)
 and [shacl-engine](https://www.npmjs.com/package/shacl-engine) take an RDF
 dataset and return a SHACL validation report made of IRIs and blank node IDs.
 This library sits on top of one: it uses rdf-validate-shacl under the hood, and
-adds the parts around it. It turns JSON into RDF via a JSON-LD context, maps
-each result back to a JSON path and line (`address[0].postcode`, not `_:b3`),
-words it from the shape's own descriptions, and ships a CLI and report formats.
+adds the parts around it. It turns JSON into RDF via a JSON-LD context and CSV
+via W3C CSVW metadata, maps each result back to where it came from
+(`address[0].postcode` or `row 3, postcode`, not `_:b3`), words it from the
+shape's own descriptions, and ships a CLI and report formats.
 
 **[Documentation site](https://theodi.github.io/data-standard-validator/)** ·
 [npm package](https://www.npmjs.com/package/@theodi/data-standard-validator) ·
@@ -54,16 +56,37 @@ person.json -> fails
   1 required field missing, 1 out of range
 ```
 
-The [full example](docs/example.md) shows the shape, the document, and the same
-report as JSON and Markdown.
+The same shape checks a CSV file through CSVW metadata, with the same wording:
+
+```bash
+npx --yes @theodi/data-standard-validator -s person-shape.ttl --csv-metadata csv-metadata.json people.csv
+```
+
+```text
+people.csv -> fails
+  in row 2
+    x Missing required field name
+      at row 2, name  line 3
+      Add `name`: The person's full name.
+    x age must be at least 0 - you gave -1
+      at row 2, age  line 3
+          3 | ,-1
+            |  ^^
+```
+
+The [full example](docs/example.md) shows the shape, both documents, the CSVW
+metadata, and the report as JSON and Markdown.
 
 ## Command line
 
 ```bash
-npx data-standard-validator -s shapes.ttl data.json
+npx data-standard-validator -s shapes.ttl data.json                                # JSON-LD
+npx data-standard-validator -s shapes.ttl -c context.jsonld data.json              # plain JSON
+npx data-standard-validator -s shapes.ttl --csv-metadata csv-metadata.json data.csv  # CSV
 ```
 
-The command is available through `npx` after installation. The exit code is 0
+Each document's format comes from its extension (`.json`, `.jsonld` or `.csv`),
+so one command can check a mix. The command is available through `npx` after installation. The exit code is 0
 when every document conforms and 1 when one does not. See
 the [CLI reference](docs/cli.md) for every option, output format and exit code.
 
@@ -74,8 +97,9 @@ import { validate, formatReport } from '@theodi/data-standard-validator'
 
 const report = await validate({
   shapes: 'https://example.org/shapes/person.ttl',
-  context: 'https://example.org/context.jsonld',   // optional
-  data: ['person-1.json', 'person-2.json'],
+  context: 'https://example.org/context.jsonld',          // for JSON; optional for JSON-LD
+  csvMetadata: 'https://example.org/csv-metadata.json',   // for CSV
+  data: ['person-1.json', 'people.csv'],
 })
 
 report.conforms                           // boolean
@@ -88,8 +112,8 @@ To validate many documents, load the shapes once:
 ```ts
 import { createValidator } from '@theodi/data-standard-validator'
 
-const validator = await createValidator({ shapes: 'shape.ttl' })
-const result = await validator.validate({ name: 'upload.json', text: body })
+const validator = await createValidator({ shapes: 'shape.ttl', csvMetadata: 'csv-metadata.json' })
+const result = await validator.validate({ name: 'upload.csv', text: body })
 ```
 
 The same API works in the browser. There, sources are URLs or inline

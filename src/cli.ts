@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * data-standard-validator - validate JSON or JSON-LD documents against SHACL shapes.
+ * data-standard-validator - validate JSON, JSON-LD or CSV documents against SHACL shapes.
  *
  * Exit codes are the contract for scripts:
  *   0  every document conforms
@@ -13,7 +13,8 @@ import { Command, Option } from 'commander'
 import { createRequire } from 'node:module'
 import { writeFile } from 'node:fs/promises'
 import { createValidator, readSource, formatReport, FORMATS, SourceError } from './node.js'
-import type { Format, Source } from './node.js'
+import type { Format, InputFormat, Source } from './node.js'
+import { FORMAT_EXTENSIONS, formatFromName } from './load/sources.js'
 
 const require = createRequire(import.meta.url)
 const pkg = require('../package.json') as { version: string }
@@ -26,6 +27,7 @@ const EXIT_LOAD = 3
 interface Flags {
   shapes: string[]
   context?: string
+  csvMetadata?: string
   format: Format
   output?: string
   color: boolean
@@ -38,12 +40,33 @@ async function readStdin (): Promise<string> {
 }
 
 /** Read every document up front: the text is also what the code frames quote. */
-interface ReadDocument { name: string, text: string, base?: string }
+interface ReadDocument { name: string, text: string, base?: string, format: InputFormat }
+
+function isStdin (args: string[]): boolean {
+  return args.length === 0 || (args.length === 1 && args[0] === '-')
+}
+
+/**
+ * The format a document argument is in, by its extension alone. Anything
+ * else is refused up front: read as JSON by default, a stray .xml or .xlsx
+ * would surface as a confusing parse error rather than a wrong argument.
+ */
+function inputFormatOf (arg: string): InputFormat {
+  const format = formatFromName(arg)
+  if (format !== undefined) return format
+  const extension = /\.([^./\\]+)$/.exec(arg.replace(/[?#].*$/, ''))?.[1]
+  const supported = (Object.entries(FORMAT_EXTENSIONS) as [InputFormat, readonly string[]][])
+    .map(([name, extensions]) => `${name.toUpperCase()} (${extensions.map((e) => `.${e}`).join(', ')})`)
+    .join(' or ')
+  throw new Error(
+    `cannot validate ${arg}: ${extension === undefined ? 'it has no file extension' : `.${extension.toLowerCase()} files are not supported`} - ` +
+    `documents must be ${supported}`,
+  )
+}
 
 async function readDocuments (args: string[]): Promise<ReadDocument[]> {
-  if (args.length === 0 || (args.length === 1 && args[0] === '-')) {
-    return [{ name: '(stdin)', text: await readStdin() }]
-  }
+  // Stdin has no name to go by, so it is read as JSON.
+  if (isStdin(args)) return [{ name: '(stdin)', text: await readStdin(), format: 'json' }]
   const documents: ReadDocument[] = []
   for (const arg of args) {
     const read = await readSource(arg)
@@ -51,6 +74,7 @@ async function readDocuments (args: string[]): Promise<ReadDocument[]> {
       name: read.name,
       text: read.text ?? '',
       ...(read.location !== undefined ? { base: read.location } : {}),
+      format: inputFormatOf(arg),
     })
   }
   return documents
@@ -62,12 +86,21 @@ async function run (args: string[], flags: Flags): Promise<number> {
     return EXIT_USAGE
   }
 
+  // Refuse an unsupported document before spending time loading the shapes.
+  try {
+    if (!isStdin(args)) args.forEach(inputFormatOf)
+  } catch (error) {
+    process.stderr.write(`data-standard-validator: ${(error as Error).message}\n`)
+    return EXIT_USAGE
+  }
+
   let report
   let sources: Map<string, string>
   try {
     const validator = await createValidator({
       shapes: flags.shapes as Source[],
       ...(flags.context !== undefined ? { context: flags.context } : {}),
+      ...(flags.csvMetadata !== undefined ? { csvMetadata: flags.csvMetadata } : {}),
     })
     const documents = await readDocuments(args)
     sources = new Map(documents.map((d) => [d.name, d.text]))
@@ -96,14 +129,16 @@ const program = new Command()
 program
   .name('data-standard-validator')
   .description(
-    'Validate JSON or JSON-LD documents against SHACL shapes, and explain any\n' +
-    'problems in plain English with the JSON path and line where they occur.',
+    'Validate JSON, JSON-LD or CSV documents against SHACL shapes, and explain any\n' +
+    'problems in plain English with the JSON path (or CSV row and column) and line\n' +
+    'where they occur.',
   )
   .version(pkg.version)
-  .argument('[documents...]', 'files or URLs to validate ("-" or nothing reads stdin)')
+  .argument('[documents...]', '.json, .jsonld or .csv files or URLs to validate ("-" or nothing reads JSON from stdin)')
   // Repeatable rather than variadic: `-s a.ttl b.json` must not swallow the document.
   .option('-s, --shapes <source>', 'SHACL shapes in Turtle: a file or URL (repeat to merge several)', collect, [])
   .option('-c, --context <source>', "JSON-LD context file or URL; replaces each document's own @context")
+  .option('--csv-metadata <source>', 'CSVW metadata file or URL describing how CSV documents map to RDF')
   .addOption(new Option('-f, --format <format>', 'report format').choices(FORMATS).default('text'))
   .option('-o, --output <file>', 'write the report to a file instead of stdout')
   .option('--no-color', 'plain text output, even in a terminal')
@@ -114,6 +149,7 @@ Examples:
   data-standard-validator -s shape.ttl -s rules.ttl record.jsonld --format json
   data-standard-validator -s shape.ttl record.jsonld -f markdown >> "$GITHUB_STEP_SUMMARY"
   cat record.jsonld | data-standard-validator -s shape.ttl
+  data-standard-validator -s shape.ttl --csv-metadata csv-metadata.json records.csv
 
 Exit codes:
   0  every document conforms     2  bad usage

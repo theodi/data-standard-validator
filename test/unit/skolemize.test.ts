@@ -45,6 +45,16 @@ describe('skolemize', () => {
     expect(index.get('ex:a')?.[0]?.jsonPath).toBe('$')
   })
 
+  test('with minting off, names nothing but still indexes the @ids the document gave', () => {
+    const text = '{\n  "@id": "ex:a",\n  "address": [ { "postcode": "X" } ]\n}'
+    const data = JSON.parse(text)
+    const { document, index, minted } = skolemize(data, { text, context: ctx, mint: false })
+    expect(minted).toBe(0)
+    expect(document).toEqual(data)
+    expect([...index.keys()].some((iri) => iri.startsWith(SKOLEM_PREFIX))).toBe(false)
+    expect(index.get('ex:a')?.[0]).toMatchObject({ jsonPath: '$', line: 1 })
+  })
+
   test('does not mistake a value object for a node', () => {
     const { minted } = skolemize({ '@id': 'ex:a', label: { '@value': 'x', '@language': 'en' } })
     expect(minted).toBe(0)
