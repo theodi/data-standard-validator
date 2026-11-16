@@ -27,12 +27,22 @@ export type IssueCode =
   | 'no-context'
   | 'parse-error'
   | 'shape-unavailable'
+  | 'no-csv-metadata'
+  | 'csv-column-missing'
+  | 'csv-column-unexpected'
+  | 'csv-feature-unsupported'
   | 'other'
 
 export interface Location {
-  /** `address[0].postcode`, or `$` for the document root. */
+  /**
+   * `address[0].postcode`, or `$` for the document root. In a CSV file, the
+   * row and column as a reader would say them: `row 3, postcode`.
+   */
   jsonPath: string
-  /** RFC 6901 pointer for the same place. */
+  /**
+   * RFC 6901 pointer for the same place. In a CSV file, an RFC 7111 fragment:
+   * `#cell=4,12` (records counted with the header, as the RFC does).
+   */
   pointer: string
   /** `@type` as written, e.g. `Address`. */
   nodeType?: string
@@ -44,6 +54,11 @@ export interface Location {
   endColumn?: number
   /** File name, when several documents are validated together. */
   document?: string
+  /**
+   * In a CSV file: the data row (1-based; 0 is the header row) and the
+   * column's title. `column` is absent when the issue is about the whole row.
+   */
+  cell?: { row: number, column?: string }
 }
 
 export interface Issue {
@@ -90,6 +105,8 @@ export interface RunReport {
     shapes: string[]
     /** The context supplied to the validator, if any. */
     context?: string
+    /** The CSVW metadata CSV files were read with, if any. */
+    csvMetadata?: string
     /** Anything odd about the setup, e.g. an optional shape that is missing. */
     warnings: Issue[]
   }
@@ -120,6 +137,24 @@ export interface PatternHint {
 const NOTE_SEVERITY: Partial<Record<IssueCode, Severity>> = {
   'shape-unavailable': 'warning',
   'no-context': 'violation',
+  'no-csv-metadata': 'violation',
+  'csv-column-missing': 'violation',
+  'csv-column-unexpected': 'warning',
+  'csv-feature-unsupported': 'warning',
+}
+
+/**
+ * A document that is not valid in its own syntax. Every input format reports
+ * this the same way, at the place the parser gave up when it says where.
+ */
+export function parseErrorIssue (syntax: string, message: string, at?: { line: number, column: number }): Issue {
+  return {
+    severity: 'violation',
+    code: 'parse-error',
+    title: `This file is not valid ${syntax}: ${message}`,
+    hint: 'Fix the syntax first - nothing else could be checked.',
+    location: { jsonPath: '$', pointer: '', ...(at ?? {}) },
+  }
 }
 
 export function noteIssue (code: IssueCode, title: string, hint?: string): Issue {

@@ -10,7 +10,7 @@ export { createValidator, validate } from './validator.js'
 export type { Validator, ValidatorOptions, ValidateOptions } from './validator.js'
 
 export { readSource, isUrl } from './load/sources.js'
-export type { Source, Environment, ReadFile, ReadResult } from './load/sources.js'
+export type { Source, Environment, ReadFile, ReadResult, InputFormat } from './load/sources.js'
 export { SourceError, NotFoundError } from './load/fetch.js'
 export type { Fetch } from './load/fetch.js'
 

@@ -2,28 +2,40 @@
  * Turning raw SHACL results into something worth reading.
  *
  * Three translations, in order of how much they help:
- *   focus node   -> a JSON path, via the skolemization index
+ *   focus node   -> a place in the source, via the format's SourceLocator
  *   property IRI -> the term the user wrote, via the inverted context
  *   constraint   -> a sentence, via the shape's own facts
  */
 
 import { describeConstraint } from './messages.js'
 import { shapeFacts } from './shape-facts.js'
-import { isSkolemIri, type NodeLocation, type SourceMap } from '../document/skolemize.js'
 import { emptyCounts, type DocumentReport, type Issue, type Location, type PatternHint, type Severity } from './types.js'
 import type { ContextIndex } from '../document/context-index.js'
 import type { Dataset } from 'rdf-ext'
 import type { ValidationResult } from 'rdf-validate-shacl/src/validation-report.js'
 
+/**
+ * Where things are in the document, whatever syntax it was written in. Each
+ * input format supplies one: JSON answers through the skolemization index and
+ * the parse tree (report/json.ts), CSV through the cells each triple came
+ * from (report/csv.ts).
+ */
+export interface SourceLocator {
+  /** Where a focus node is written, if it came from the document. */
+  node (iri: string): Omit<Location, 'document'> | undefined
+  /** The property one level below a located node, and its value as written. */
+  property (
+    node: Omit<Location, 'document'>, focusIri: string, propertyIri: string, term: string,
+  ): { location: Omit<Location, 'document'>, value?: string }
+  /** The focus node as `technical.focusNode` shows it. */
+  describe (focusIri: string, node: Omit<Location, 'document'> | undefined): string
+}
+
 export interface BuildContext {
   document: string
   shapes: Dataset
-  index: Map<string, NodeLocation[]>
+  locator: SourceLocator
   context?: ContextIndex
-  /** The parsed document, for quoting the offending value back. */
-  data: unknown
-  /** Locates the *property* in the source text, not just its parent node. */
-  sourceMap?: SourceMap
   patterns?: readonly PatternHint[]
 }
 
@@ -32,35 +44,6 @@ function severityOf (result: ValidationResult): Severity {
   if (value.endsWith('Warning')) return 'warning'
   if (value.endsWith('Info')) return 'info'
   return 'violation'
-}
-
-function escapeSegment (segment: string): string {
-  return segment.replace(/~/g, '~0').replace(/\//g, '~1')
-}
-
-function resolvePointer (data: unknown, pointer: string): unknown {
-  if (pointer === '') return data
-  let current: unknown = data
-  for (const raw of pointer.split('/').slice(1)) {
-    const key = raw.replace(/~1/g, '/').replace(/~0/g, '~')
-    if (Array.isArray(current)) current = current[Number(key)]
-    else if (current !== null && typeof current === 'object') current = (current as Record<string, unknown>)[key]
-    else return undefined
-    if (current === undefined) return undefined
-  }
-  return current
-}
-
-/** The value as the user wrote it, when it is a scalar we can point at. */
-function writtenValue (data: unknown, pointer: string): string | undefined {
-  const value = resolvePointer(data, pointer)
-  // `"x": ["XYZ"]` reads as XYZ to whoever wrote it; only collapse a single
-  // entry, so we never hide that there were several.
-  const scalar = Array.isArray(value) && value.length === 1 ? value[0] : value
-  if (typeof scalar === 'string' || typeof scalar === 'number' || typeof scalar === 'boolean') {
-    return String(scalar)
-  }
-  return undefined
 }
 
 /** An IRI value shown as the token or term a user would recognise. */
@@ -82,7 +65,7 @@ export function buildIssues (results: ValidationResult[], build: BuildContext): 
 
   for (const result of results) {
     const focus = result.focusNode?.value
-    const primary = focus !== undefined ? build.index.get(focus)?.[0] : undefined
+    const primary = focus !== undefined ? build.locator.node(focus) : undefined
 
     const propertyIri = result.path?.value
     const typeIri = primary?.nodeType !== undefined && build.context
@@ -112,18 +95,10 @@ export function buildIssues (results: ValidationResult[], build: BuildContext): 
     // The issue belongs at the property, one level below the focus node.
     let location = base
     let value = displayIri(result.value?.value, build.context, propertyIri, typeIri)
-    if (term !== undefined && primary) {
-      const pointer = `${base.pointer}/${escapeSegment(term)}`
-      // The property's own span is what should be underlined. When it is absent
-      // there is nothing to point at, so the enclosing node's span stands.
-      const span = build.sourceMap?.locate(pointer)
-      location = {
-        ...base,
-        jsonPath: base.jsonPath === '$' ? term : `${base.jsonPath}.${term}`,
-        pointer,
-        ...(span ?? {}),
-      }
-      value = writtenValue(build.data, pointer) ?? value
+    if (term !== undefined && primary && focus !== undefined && propertyIri !== undefined) {
+      const located = build.locator.property(primary, focus, propertyIri, term)
+      location = { ...located.location, document: build.document }
+      value = located.value ?? value
     }
 
     const message = describeConstraint({
@@ -145,14 +120,7 @@ export function buildIssues (results: ValidationResult[], build: BuildContext): 
       ...(value !== undefined ? { value } : {}),
       ...(allowedValues !== undefined ? { allowedValues } : {}),
       technical: {
-        // A synthetic identifier means nothing outside this process, so report
-        // the node the way a reader can actually find it.
-        focusNode: focus === undefined
-          ? '(none)'
-          : isSkolemIri(focus)
-            ? `(anonymous node at ${base.jsonPath}${
-                primary?.nodeId !== undefined ? `, within ${primary.nodeId}` : ''})`
-            : focus,
+        focusNode: focus === undefined ? '(none)' : build.locator.describe(focus, primary),
         ...(propertyIri !== undefined ? { resultPath: propertyIri } : {}),
         ...(result.sourceShape ? { sourceShape: result.sourceShape.value } : {}),
         constraint,
@@ -186,6 +154,17 @@ function dedupe (issues: Issue[]): Issue[] {
     }
   }
   return issues.filter((issue) => !dropped.has(issue))
+}
+
+/**
+ * The issues found while converting a document, followed by SHACL's. A value
+ * the conversion could not read has been reported already, in the format's
+ * own words; what SHACL makes of the leftover text (wrong type, out of range)
+ * only repeats it less clearly, so it is dropped.
+ */
+export function combineIssues (conversion: Issue[], shacl: Issue[]): Issue[] {
+  const unreadable = new Set(conversion.filter((i) => i.code === 'bad-format').map((i) => i.location.pointer))
+  return [...conversion, ...shacl.filter((i) => !unreadable.has(i.location.pointer))]
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = { violation: 0, warning: 1, info: 2 }

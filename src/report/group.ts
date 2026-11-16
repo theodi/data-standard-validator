@@ -13,8 +13,18 @@ export interface IssueGroup {
 
 export function groupIssues (issues: Issue[]): IssueGroup[] {
   const groups = new Map<string, IssueGroup>()
+  const add = (key: string, label: string, issue: Issue): void => {
+    const existing = groups.get(key)
+    if (existing) existing.issues.push(issue)
+    else groups.set(key, { label, issues: [issue] })
+  }
   for (const issue of issues) {
-    const { jsonPath, nodeType } = issue.location
+    const { jsonPath, nodeType, cell } = issue.location
+    // In a CSV file the reader's unit is the row, whichever node it became.
+    if (cell !== undefined) {
+      add(`${issue.location.document ?? ''}#row=${cell.row}`, cell.row === 0 ? 'the header row' : `row ${cell.row}`, issue)
+      continue
+    }
     // Group by the node, not the property: everything wrong with address[0].
     let nodePath = jsonPath
     if (issue.field !== undefined) {
@@ -29,10 +39,7 @@ export function groupIssues (issues: Issue[]): IssueGroup[] {
       ? (atRoot || redundant ? nodeType : `${nodeType} (${nodePath})`)
       : atRoot ? 'the document' : nodePath
 
-    const key = `${issue.location.document ?? ''}#${nodePath || '$'}`
-    const existing = groups.get(key)
-    if (existing) existing.issues.push(issue)
-    else groups.set(key, { label, issues: [issue] })
+    add(`${issue.location.document ?? ''}#${nodePath || '$'}`, label, issue)
   }
   return [...groups.values()]
 }

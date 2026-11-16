@@ -14,8 +14,12 @@ import { fileURLToPath } from 'node:url'
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
 
-/** Lower may not import higher; `format` and `load` are siblings. Root modules sit above them all. */
-const LAYERS = ['rdf', 'document', 'report', 'format', 'load']
+/**
+ * Lower may not import higher; `format` and `load` are siblings. `input`
+ * (one handler per document format) sits on top, drawing on all of them.
+ * Root modules sit above everything.
+ */
+const LAYERS = ['rdf', 'document', 'report', 'format', 'load', 'input']
 
 const files = globSync('**/*.ts', { cwd: src })
   .filter((f) => !f.endsWith('.d.ts'))
@@ -40,7 +44,7 @@ describe('module structure', () => {
     }
   })
 
-  test('folders are layered: rdf <- document <- report <- format, load', () => {
+  test('folders are layered: rdf <- document <- report <- format, load <- input', () => {
     const upward: string[] = []
     for (const [file, targets] of graph) {
       const from = layerOf(file)

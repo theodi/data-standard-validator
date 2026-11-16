@@ -9,17 +9,21 @@
 
 import { fetchText, NotFoundError, SourceError, type Fetch } from './fetch.js'
 
+/** The syntax a document is written in. */
+export type InputFormat = 'json' | 'csv'
+
 /**
  * Anything the validator can read: shapes, a context or a document.
  *
  * A plain string is a URL when it has a scheme (`https://...`), and a file
- * path otherwise.
+ * path otherwise. A document's `format` is worked out from its name when it
+ * is not given: `.csv` is CSV, anything else JSON.
  */
 export type Source =
   | string
-  | { url: string, optional?: boolean, label?: string }
-  | { path: string, optional?: boolean, label?: string }
-  | { text: string, name?: string, base?: string }
+  | { url: string, optional?: boolean, label?: string, format?: InputFormat }
+  | { path: string, optional?: boolean, label?: string, format?: InputFormat }
+  | { text: string, name?: string, base?: string, format?: InputFormat }
   | { json: unknown, name?: string, base?: string }
 
 export type ReadFile = (path: string) => Promise<string>
@@ -37,6 +41,8 @@ export interface ReadResult {
   location?: string
   text?: string
   json?: unknown
+  /** The format the caller said the source is in, if they did. */
+  format?: InputFormat
 }
 
 export function isUrl (value: string): boolean {
@@ -77,11 +83,40 @@ export function nameOf (source: Source, fallback = 'document'): string {
   return s.name ?? fallback
 }
 
+/** The file extensions each format is recognised by, lower case. */
+export const FORMAT_EXTENSIONS: Readonly<Record<InputFormat, readonly string[]>> = {
+  json: ['json', 'jsonld'],
+  csv: ['csv'],
+}
+
+/** The format a name, path or URL announces by its extension, if any. */
+export function formatFromName (name: string): InputFormat | undefined {
+  const path = isUrl(name) ? new URL(name).pathname : name.replace(/[?#].*$/, '')
+  const extension = /\.([^./\\]+)$/.exec(path)?.[1]?.toLowerCase()
+  if (extension === undefined) return undefined
+  for (const [format, extensions] of Object.entries(FORMAT_EXTENSIONS) as [InputFormat, readonly string[]][]) {
+    if (extensions.includes(extension)) return format
+  }
+  return undefined
+}
+
+/**
+ * The format a document is in: as stated, or else by its file extension.
+ * Already-parsed `{ json }` is JSON whatever it is called, and anything
+ * unrecognised is read as JSON, which is how inline `{ text }` without a name
+ * has always been read.
+ */
+export function formatOf (read: ReadResult): InputFormat {
+  if (read.json !== undefined) return 'json'
+  return read.format ?? formatFromName(read.location ?? read.name) ?? 'json'
+}
+
 export async function readSource (source: Source, env: Environment, fallbackName?: string): Promise<ReadResult> {
   const s = normalise(source)
+  const format = 'format' in s && s.format !== undefined ? { format: s.format } : {}
 
   if ('url' in s) {
-    return { name: s.url, location: s.url, text: await fetchText(s.url, env.fetch) }
+    return { name: s.url, location: s.url, text: await fetchText(s.url, env.fetch), ...format }
   }
 
   if ('path' in s) {
@@ -92,7 +127,7 @@ export async function readSource (source: Source, env: Environment, fallbackName
       )
     }
     try {
-      return { name: s.path, location: s.path, text: await env.readFile(s.path) }
+      return { name: s.path, location: s.path, text: await env.readFile(s.path), ...format }
     } catch (error) {
       if ((error as { code?: string }).code === 'ENOENT') throw new NotFoundError(s.path)
       throw new SourceError(`cannot read ${s.path}: ${(error as Error).message}`, s.path)
@@ -103,5 +138,5 @@ export async function readSource (source: Source, env: Environment, fallbackName
   // read by the caller that names `./context.jsonld`.
   const name = s.name ?? fallbackName ?? 'document'
   const location = s.base !== undefined ? { location: s.base } : {}
-  return 'text' in s ? { name, ...location, text: s.text } : { name, ...location, json: s.json }
+  return 'text' in s ? { name, ...location, text: s.text, ...format } : { name, ...location, json: s.json }
 }

@@ -27,6 +27,14 @@ import type { ContextIndex } from './context-index.js'
 
 export const SKOLEM_PREFIX = 'urn:dsv:node:'
 
+/**
+ * The base for identities minted inside a document that has no URL of its
+ * own - a CSV row is `#row-{_row}` against it. Unlike a URN it is
+ * hierarchical, so relative templates such as `person/{id}` still resolve.
+ * The `.invalid` TLD guarantees it never names anything real.
+ */
+export const SKOLEM_BASE = 'https://dsv.invalid/'
+
 export interface NodeLocation {
   /** Dotted path as a person would read it: `address[0].postcode`. */
   jsonPath: string
@@ -69,6 +77,12 @@ export interface SkolemizeOptions {
   text?: string
   /** Used to spot map-valued containers and resolve `@type` to a class IRI. */
   context?: ContextIndex
+  /**
+   * Name anonymous nodes (the default). Off, the walk still indexes every
+   * node that has an `@id` of its own, so those can still be located, but
+   * anonymous nodes stay blank and cannot be.
+   */
+  mint?: boolean
 }
 
 /**
@@ -79,6 +93,7 @@ export interface SkolemizeOptions {
 export function skolemize (input: unknown, opts: SkolemizeOptions = {}): SkolemizeResult {
   const index = new Map<string, NodeLocation[]>()
   let counter = 0
+  const mint = opts.mint !== false
 
   const sourceMap = opts.text !== undefined ? new SourceMap(opts.text) : undefined
 
@@ -147,7 +162,7 @@ export function skolemize (input: unknown, opts: SkolemizeOptions = {}): Skolemi
     const out: Record<string, unknown> = { ...value }
     const declaredId = typeof value['@id'] === 'string' ? value['@id'] as string : undefined
     let iri = declaredId
-    if (iri === undefined) {
+    if (iri === undefined && mint) {
       iri = `${SKOLEM_PREFIX}${counter++}`
       out['@id'] = iri
     }
@@ -169,7 +184,7 @@ export function skolemize (input: unknown, opts: SkolemizeOptions = {}): Skolemi
     }
     if (typeName !== undefined) loc.nodeType = typeName
     if (nodeId !== undefined) loc.nodeId = nodeId
-    record(iri, loc)
+    if (iri !== undefined) record(iri, loc)
     // Index the expanded form too, so a report quoting the absolute IRI still
     // finds the node when the document wrote it compactly (`ex:person-1`).
     if (declaredId !== undefined && opts.context) {
@@ -206,6 +221,11 @@ export function isSkolemIri (iri: string): boolean {
   return iri.startsWith(SKOLEM_PREFIX)
 }
 
+/** Any identity this run made up, whatever the input format. */
+export function isSynthetic (iri: string): boolean {
+  return isSkolemIri(iri) || iri.startsWith(SKOLEM_BASE)
+}
+
 export interface SourceSpan {
   line: number
   column: number
@@ -229,7 +249,8 @@ export class SourceMap {
     }
   }
 
-  private lineCol (offset: number): { line: number, column: number } {
+  /** Line and column (both 1-based) of a character offset in the text. */
+  position (offset: number): { line: number, column: number } {
     let lo = 0
     let hi = this.lineStarts.length - 1
     while (lo < hi) {
@@ -245,8 +266,8 @@ export class SourceMap {
     if (!this.tree) return undefined
     const node = findNodeAtLocation(this.tree, segments)
     if (!node) return undefined
-    const start = this.lineCol(node.offset)
-    const end = this.lineCol(node.offset + node.length)
+    const start = this.position(node.offset)
+    const end = this.position(node.offset + node.length)
     return {
       line: start.line,
       column: start.column,

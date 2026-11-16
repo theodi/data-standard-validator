@@ -1,23 +1,26 @@
 /*
- * The pipeline: JSON in, report out.
+ * The pipeline: any input format in, report out.
  *
- *   read -> parse -> choose @context -> skolemize -> toRDF -> SHACL -> humanise
+ *   read -> prepare (format's own: parse, name nodes, convert) -> SHACL -> humanise
+ *
+ * Everything format-specific sits behind `InputHandler` (src/input/); from
+ * the dataset onwards a JSON-LD record and a CSV file take the same road, so
+ * they are checked and reported alike.
  *
  * Isomorphic. Where the inputs come from (fetch, a file reader, a textarea)
  * is the caller's business and arrives through `Environment`.
  */
 
-import { skolemize, type NodeLocation, type SourceMap } from './document/skolemize.js'
-import { declaredContext, toDataset, type JsonLdContext } from './document/jsonld.js'
-import type { ContextIndex } from './document/context-index.js'
 import { createShaclValidator } from './rdf/shacl.js'
 import type { CrossCheck, CrossCheckDocument } from './rdf/cross-checks.js'
-import { buildIssues, documentReport } from './report/build.js'
-import { emptyCounts, noteIssue } from './report/types.js'
+import { buildIssues, combineIssues, documentReport } from './report/build.js'
+import { emptyCounts } from './report/types.js'
 import type { CrossCheckReport, DocumentReport, Issue, PatternHint, RunReport, Severity } from './report/types.js'
 import { ContextLoader, type LoadedContext } from './load/context.js'
 import { loadShapes, type LoadedShapes } from './load/shapes.js'
-import { readSource, type Environment, type Source } from './load/sources.js'
+import { loadCsvw, type LoadedCsvw } from './load/csvw.js'
+import { formatOf, readSource, type Environment, type InputFormat, type Source } from './load/sources.js'
+import { createInputs, type InputHandler } from './input/index.js'
 import type { Dataset } from 'rdf-ext'
 
 export interface ValidatorOptions extends Environment {
@@ -25,6 +28,11 @@ export interface ValidatorOptions extends Environment {
   shapes: Source | readonly Source[]
   /** A JSON-LD context that replaces each document's own `@context`. */
   context?: Source
+  /**
+   * CSVW metadata describing how CSV documents map to RDF. Needed only to
+   * validate CSV; a CSV document without it fails with `no-csv-metadata`.
+   */
+  csvMetadata?: Source
   /** Rules across the whole batch, run by `validateAll`. */
   crossChecks?: readonly CrossCheck[]
   /** Plain-English names for the `sh:pattern`s your shapes use. */
@@ -65,14 +73,21 @@ class ShaclValidator implements Validator {
 
   private readonly engine: ReturnType<typeof createShaclValidator>
   private readonly useSkolem: boolean
+  private readonly inputs: Record<InputFormat, InputHandler>
 
   constructor (
     private readonly shapes: LoadedShapes,
-    private readonly context: LoadedContext | undefined,
-    private readonly loader: ContextLoader,
+    context: LoadedContext | undefined,
+    loader: ContextLoader,
     private readonly options: ValidatorOptions,
+    csv: LoadedCsvw | undefined,
   ) {
     this.engine = createShaclValidator(shapes.dataset)
+    this.inputs = createInputs({
+      loader,
+      ...(context !== undefined ? { context } : {}),
+      ...(csv !== undefined ? { csv } : {}),
+    })
     this.skolemSafe = shapes.skolemSafe
     // A shape demanding blank nodes would be broken by skolemization, so the
     // loader's finding overrides the caller.
@@ -80,7 +95,8 @@ class ShaclValidator implements Validator {
     this.setup = {
       shapes: shapes.sources,
       ...(context !== undefined ? { context: context.source } : {}),
-      warnings: shapes.warnings,
+      ...(csv !== undefined ? { csvMetadata: csv.source } : {}),
+      warnings: [...shapes.warnings, ...(csv?.warnings ?? [])],
     }
   }
 
@@ -121,107 +137,25 @@ class ShaclValidator implements Validator {
   private async run (input: Source): Promise<Outcome> {
     const read = await readSource(input, this.options)
     const name = read.name
-
-    let data: unknown
-    try {
-      data = read.json !== undefined ? read.json : JSON.parse(read.text ?? '')
-    } catch (error) {
-      // Through the same assembler as everything else: an issue that renderers
-      // do not walk is an issue nobody ever sees.
-      return {
-        report: documentReport(name, false, [{
-          severity: 'violation',
-          code: 'parse-error',
-          title: `This file is not valid JSON: ${(error as Error).message}`,
-          hint: 'Fix the syntax first - nothing else could be checked.',
-          location: { jsonPath: '$', pointer: '', document: name },
-        }]),
-      }
+    const preparation = await this.inputs[formatOf(read)].prepare(read, { skolemize: this.useSkolem })
+    if ('failed' in preparation) {
+      return { report: documentReport(name, false, preparation.failed.map((i) => withDocument(i, name))) }
     }
 
-    const chosen = await this.chooseContext(data, read.location)
-    if ('missing' in chosen) {
-      return { report: documentReport(name, false, [withDocument(chosen.missing, name)]) }
-    }
-
-    let document: unknown = data
-    let index = new Map<string, NodeLocation[]>()
-    let sourceMap: SourceMap | undefined
-    if (this.useSkolem) {
-      const result = skolemize(data, {
-        ...(read.text !== undefined ? { text: read.text } : {}),
-        context: chosen.index,
-      })
-      document = result.document
-      index = result.index
-      sourceMap = result.sourceMap
-    }
-
-    const dataset = await toDataset(document, chosen.context, this.loader.documentLoader)
+    const { dataset, locator, naming, issues: found } = preparation.prepared
     const shaclReport = await this.engine.validate(dataset)
-
-    const issues = buildIssues(shaclReport.results, {
+    const shaclIssues = buildIssues(shaclReport.results, {
       document: name,
       shapes: this.shapes.dataset,
-      index,
-      context: chosen.index,
-      data,
-      ...(sourceMap !== undefined ? { sourceMap } : {}),
+      locator,
+      ...(naming !== undefined ? { context: naming } : {}),
       ...(this.options.patterns !== undefined ? { patterns: this.options.patterns } : {}),
     })
-    if (chosen.note) issues.push(withDocument(chosen.note, name))
 
-    return { report: documentReport(name, shaclReport.conforms, issues), dataset }
-  }
-
-  /**
-   * The supplied context always wins; otherwise the document's own is loaded.
-   * With neither there is nothing to turn the JSON into RDF with, and passing
-   * it would mean passing a document nobody checked.
-   */
-  private async chooseContext (data: unknown, base: string | undefined): Promise<
-    | { context: JsonLdContext, index: ContextIndex, note?: Issue }
-    | { missing: Issue }
-  > {
-    const declared = declaredContext(data)
-
-    if (this.context) {
-      return {
-        context: this.context.context,
-        index: this.context.index,
-        note: declared === undefined
-          ? noteIssue('assumed-context', 'No @context in this document, so the supplied context was used')
-          : noteIssue('substituted-context', "This document's @context was replaced by the supplied context"),
-      }
-    }
-
-    if (declared === undefined) {
-      return {
-        missing: noteIssue(
-          'no-context',
-          'This document has no @context, so nothing in it could be checked',
-          'Add an @context to the document, or supply a context to the validator.',
-        ),
-      }
-    }
-
-    try {
-      const context = await this.loader.inline(declared, base)
-      return { context, index: this.loader.indexFor(context) }
-    } catch (error) {
-      return {
-        // The reason names a URL, so it goes in `value`; titles and hints stay
-        // free of IRIs.
-        missing: {
-          ...noteIssue(
-            'no-context',
-            "This document's @context could not be loaded, so nothing in it could be checked",
-            'Check that it is reachable, or supply a context to the validator to use instead.',
-          ),
-          value: (error as Error).message,
-        },
-      }
-    }
+    const issues = combineIssues(found, shaclIssues).map((i) => withDocument(i, name))
+    // What the conversion found counts as much as what SHACL found.
+    const conforms = shaclReport.conforms && !found.some((i) => i.severity === 'violation')
+    return { report: documentReport(name, conforms, issues), dataset }
   }
 }
 
@@ -237,7 +171,8 @@ export async function createValidator (options: ValidatorOptions): Promise<Valid
   const loader = new ContextLoader(options)
   const shapes = await loadShapes(list(options.shapes), options)
   const context = options.context !== undefined ? await loader.load(options.context) : undefined
-  return new ShaclValidator(shapes, context, loader, options)
+  const csv = options.csvMetadata !== undefined ? await loadCsvw(options.csvMetadata, options) : undefined
+  return new ShaclValidator(shapes, context, loader, options, csv)
 }
 
 /** One call: load the shapes, check the data, return the report. */

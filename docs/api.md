@@ -19,12 +19,28 @@ projects can use the package directly; browser projects can import it through
 a bundler. Node loads a build that can read file paths. Browsers and bundlers
 load a build without any filesystem code. Both have the same API.
 
+## Formats
+
+Documents may be [JSON or JSON-LD](json.md) or [CSV](csv.md), in any mix. Each
+format needs one thing to turn a document into RDF, and you supply it once per
+validator:
+
+| Format | Read as this format when | Needs | Option |
+| --- | --- | --- | --- |
+| JSON and JSON-LD | the name ends in `.json` or `.jsonld`, or anything not CSV | a JSON-LD context | `context`, or the document's own `@context` |
+| CSV | the name ends in `.csv` | CSVW metadata | `csvMetadata` |
+
+`format: 'json' | 'csv'` on a [source](#sources) overrides the name. Everything
+else, from the report to the issue codes, is the same for every format.
+
 ## `validate(options)`: one call
 
 ```ts
 const report = await validate({
   shapes: 'shapes/person.ttl',
-  data: ['a.json', 'b.json'],
+  context: 'shapes/context.jsonld',        // for the JSON documents
+  csvMetadata: 'shapes/csv-metadata.json', // for the CSV documents
+  data: ['a.json', 'b.csv'],
 })
 ```
 
@@ -37,29 +53,35 @@ Parsing large shapes files is the slow part. Hold on to a validator to pay for
 it once:
 
 ```ts
-const validator = await createValidator({ shapes: 'shapes/person.ttl', context: 'context.jsonld' })
+const validator = await createValidator({
+  shapes: 'shapes/person.ttl',
+  context: 'context.jsonld',
+  csvMetadata: 'csv-metadata.json',
+})
 
-const one = await validator.validate({ name: 'upload.json', text })   // DocumentReport
-const all = await validator.validateAll(['a.json', 'b.json'])         // RunReport
+const one = await validator.validate({ name: 'upload.csv', text })    // DocumentReport
+const all = await validator.validateAll(['a.json', 'b.csv'])          // RunReport
 
-validator.setup       // { shapes, context?, warnings } - what it checks against
+validator.setup       // { shapes, context?, csvMetadata?, warnings } - what it checks against
 validator.skolemSafe  // false if a shape needs real blank nodes (see how-it-works.md)
 ```
 
-`createValidator` rejects with a `SourceError` if a shapes file or the context
-cannot be loaded or parsed. Problems with a *document* do not reject. Invalid
-JSON or an unloadable `@context` becomes an issue in the report.
+`createValidator` rejects with a `SourceError` if a shapes file, the context
+or the CSVW metadata cannot be loaded or parsed. Problems with a *document* do
+not reject: a document that is not valid JSON or CSV, or that has no context or
+metadata to be read with, becomes an issue in the report.
 
 ## Options
 
 | Option | Type | Description |
 | --- | --- | --- |
 | `shapes` | `Source \| Source[]` | **Required.** SHACL shapes in Turtle. Several are merged, in order. |
-| `context` | `Source` | A JSON-LD context that replaces each document's `@context`. The file may be written as `{"@context": {...}}` or as the bare context. |
+| `context` | `Source` | For JSON documents: a JSON-LD context that replaces each document's `@context`. See [the context](json.md#the-context). |
+| `csvMetadata` | `Source` | For CSV documents: CSVW metadata saying how each row maps to RDF. See [the metadata](csv.md#the-metadata). |
 | `data` | `Source \| Source[]` | `validate()` only: the documents to check. |
 | `crossChecks` | `CrossCheck[]` | Rules across the whole batch (see below). |
 | `patterns` | `PatternHint[]` | Plain-English names for the `sh:pattern` regexes your shapes use. |
-| `skolemize` | `boolean` | Default `true`. Set to `false` to stop tracing results back to JSON paths. It is turned off automatically when a shape requires blank nodes. |
+| `skolemize` | `boolean` | Default `true`. Gives anonymous nodes (JSON objects without an `@id`, CSV rows without an `aboutUrl`) an internal identity so results can be traced back to them. It is turned off automatically when a shape requires blank nodes. See [how it works](how-it-works.md). |
 | `fetch` | `typeof fetch` | Used for URL sources. Defaults to the global `fetch`. Inject one for tests, auth headers or caching. |
 | `readFile` | `(path) => Promise<string>` | Used for file paths. The Node build supplies one. In a browser, path sources fail unless you pass one. |
 
@@ -70,9 +92,9 @@ Every input (shapes, context, documents) is a `Source`:
 ```ts
 type Source =
   | string                                              // URL if it has a scheme, else a file path
-  | { url: string, optional?: boolean, label?: string }
-  | { path: string, optional?: boolean, label?: string }
-  | { text: string, name?: string, base?: string }      // content you already have
+  | { url: string, optional?: boolean, label?: string, format?: 'json' | 'csv' }
+  | { path: string, optional?: boolean, label?: string, format?: 'json' | 'csv' }
+  | { text: string, name?: string, base?: string, format?: 'json' | 'csv' }  // content you already have
   | { json: unknown, name?: string, base?: string }     // already-parsed JSON
 ```
 
@@ -85,6 +107,8 @@ type Source =
   loaded").
 - Prefer `{ text }` over `{ json }` for documents when you have the text.
   Only the text gives issues line and column numbers.
+- **`format`** says how to read a document: `'json'` or `'csv'`. Without it,
+  the name, path or URL decides, as in [Formats](#formats).
 
 ## Formatting a report
 
@@ -173,11 +197,17 @@ failed check makes `report.conforms` false and appears in `report.crossChecks`.
 ```ts
 import { createValidator } from '@theodi/data-standard-validator'
 
-const validator = await createValidator({ shapes: 'https://example.org/shape.ttl' })
-const report = await validator.validateAll([{ name: 'pasted', text: textarea.value }])
+const validator = await createValidator({
+  shapes: 'https://example.org/shape.ttl',
+  csvMetadata: 'https://example.org/csv-metadata.json',
+})
+const report = await validator.validateAll([
+  { name: 'pasted', text: textarea.value },              // read as JSON
+  { name: file.name, text: await file.text() },          // an upload: .csv is read as CSV
+])
 ```
 
-- Shapes and contexts must be served with CORS headers. Files on
+- Shapes, contexts and CSVW metadata must be served with CORS headers. Files on
   `raw.githubusercontent.com` are.
 - Parsing large shapes can take a noticeable moment, so run validation in a
   Web Worker to keep the page responsive.
