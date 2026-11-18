@@ -1,183 +1,183 @@
 # CSV
 
-The validator checks CSV files through
-[CSV on the Web (CSVW)](https://www.w3.org/TR/tabular-metadata/) metadata. The
-metadata says which IRI each column stands for and how a row becomes RDF, the
-way a JSON-LD context does for JSON. Every problem is reported at its **row and
-column**.
+CSV files are checked through [CSV on the Web (CSVW)](https://www.w3.org/TR/tabular-data-primer/)
+metadata. The metadata says how each row becomes RDF, so the same SHACL shapes
+can check CSV and JSON alike.
 
 ```bash
-data-standard-validator -s person-shape.ttl --csv-metadata csv-metadata.json people.csv
+data-standard-validator -s shape.ttl --csv-metadata csv-metadata.json people.csv
 ```
 
 ```ts
 const validator = await createValidator({ shapes, csvMetadata: 'csv-metadata.json' })
-const report = await validator.validate({ text, name: 'upload.csv' })
+const report = await validator.validate({ name: 'upload.csv', text })
 ```
 
-The same shapes check JSON and CSV alike, so one standard can accept both. The
-[example](example.md) checks one shape against a document in each format.
+A document is read as CSV when its name ends in `.csv`, or when its
+[source](api.md#sources) has `format: 'csv'`. Stdin is always read as JSON.
 
-## How a document is read as CSV
+## The metadata
 
-On the command line, a document is read as CSV when its path or URL ends in
-`.csv`. Stdin is always read as JSON, so save CSV to a `.csv` file to check it.
+A minimal file: two columns, and a virtual column that types every row as a
+`Person`.
 
-From the API, a source whose name, path or URL ends in `.csv` is read as CSV.
-To be explicit, add `format: 'csv'` to the [source](api.md#sources).
+```json
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "tableSchema": {
+    "aboutUrl": "#row-{_row}",
+    "columns": [
+      { "name": "name", "titles": "name", "propertyUrl": "https://example.org/name" },
+      { "name": "age", "titles": "age", "propertyUrl": "https://example.org/age", "datatype": "integer" },
+      { "name": "type", "virtual": true, "propertyUrl": "rdf:type", "valueUrl": "https://example.org/Person" }
+    ]
+  }
+}
+```
 
-Text that is not valid CSV, such as a quoted value that is never closed, fails
-with [`parse-error`](error-reference.md#parse-error), located where the syntax
-broke. A file with a header but no rows fails too.
+To put some columns on a nested node, give them their own `aboutUrl`, such as
+`#row-{_row}/address`, and link that node to the row with another virtual
+column.
 
-## What a report looks like
+The metadata describes a layout of CSV, not one file, so leave out `url`.
+
+To learn how to write CSVW metadata, see:
+
+- [CSV on the Web: A Primer](https://www.w3.org/TR/tabular-data-primer/)
+- [Metadata Vocabulary for Tabular Data](https://www.w3.org/TR/tabular-metadata/)
+- [Generating RDF from Tabular Data](https://www.w3.org/TR/csv2rdf/)
+
+## What is supported
+
+| Where | Supported |
+| --- | --- |
+| Tables | One table, or the first table of a group |
+| `dialect` | `header`, `headerRowCount`, `delimiter`, `skipRows`, `trim` |
+| Columns | `name`, `titles`, `virtual`, `suppressOutput`, `aboutUrl`, `propertyUrl`, `valueUrl`, `datatype`, `null`, `separator` |
+| `datatype` | `string`, `boolean` (e.g. `"Yes\|No"`), integer types, `decimal`/`double`/`float` (with `groupChar`, `decimalChar`), `date` (e.g. `"dd/MM/yyyy"`), `dateTime`, `time`, `anyURI` |
+| URI templates | `{name}`, `{+name}`, `{#name}`, `_row`, `_sourceRow`, `_name` |
+
+Anything else, such as `required`, `minimum` or `primaryKey`, is ignored with a
+[`csv-feature-unsupported`](error-reference.md#csv-feature-unsupported)
+warning. Put those rules in the SHACL shapes instead.
+
+## Where problems are reported
 
 ```text
 people.csv -> fails
   in row 2
     x Missing required field name
       at row 2, name  line 3
-      Add `name`: The person's full name.
     x age must be at least 0 - you gave -1
       at row 2, age  line 3
-          3 | ,-1
-            |  ^^
 ```
 
-Issues are grouped by row. Each issue's `location` has:
+Every issue has a row and a column title. Header problems are reported at row 0.
+The `pointer` is an [RFC 7111](https://www.rfc-editor.org/rfc/rfc7111)
+fragment such as `#cell=3,2`. See [Report format](report-format.md#locations).
 
-| Field | Example | Meaning |
+## How this differs from standard CSVW
+
+| Standard CSVW | This validator | Why |
 | --- | --- | --- |
-| `jsonPath` | `row 2, age` | The row and column as a person says them. |
-| `pointer` | `#cell=3,2` | The same cell as an [RFC 7111](https://www.rfc-editor.org/rfc/rfc7111) fragment, counting the header as row 1. |
-| `line`, `column` | `3`, `2` | Where the cell is in the text, with `endLine` and `endColumn`. |
-| `cell` | `{ row: 2, column: "age" }` | The data row (from 1; 0 is the header) and the column's title. |
-| `nodeType` | `Person` | The type a virtual column gives the row's node, if any. |
-
-A problem in an empty cell, such as a missing required value, is reported at
-that cell. A problem with the header, such as a missing column, is reported at
-row 0. See [Report format](report-format.md) for the whole issue.
-
-## The metadata
-
-CSVW metadata maps each column to an IRI, such as the `postcode` column to
-`https://example.org/postcode`. Without it, a CSV file produces no RDF and
-there is nothing to check. It is loaded once, with `--csv-metadata` or the
-`csvMetadata` option, and applies to every CSV document in the run. A CSV
-document checked without metadata fails with
-[`no-csv-metadata`](error-reference.md#no-csv-metadata).
-
-The metadata is also how the report speaks your language. Field names are
-column titles, and the values of a controlled vocabulary are shown by their
-labels (see [`valueMap`](#extensions)).
-
-### Writing the metadata
-
-The metadata is ordinary CSVW. Each row is one record, named by the table's
-`aboutUrl`. A column whose values belong to a nested object names that node with
-its own `aboutUrl`. Virtual columns link the nodes together and give them
-their types:
-
-```json
-{
-  "@context": ["http://www.w3.org/ns/csvw", { "@language": "en" }],
-  "dialect": { "header": true, "trim": true },
-  "tableSchema": {
-    "aboutUrl": "#row-{_row}",
-    "null": ["", "N/A"],
-    "columns": [
-      { "name": "name", "titles": "full_name", "propertyUrl": "https://example.org/name" },
-      { "name": "age", "titles": "age", "propertyUrl": "https://example.org/age", "datatype": "nonNegativeInteger" },
-      {
-        "name": "postcode", "titles": "postcode",
-        "aboutUrl": "#row-{_row}/address", "propertyUrl": "https://example.org/postcode"
-      },
-      {
-        "name": "link_address", "virtual": true,
-        "propertyUrl": "https://example.org/address", "valueUrl": "#row-{_row}/address"
-      },
-      {
-        "name": "type_address", "virtual": true, "aboutUrl": "#row-{_row}/address",
-        "propertyUrl": "rdf:type", "valueUrl": "https://example.org/Address"
-      },
-      { "name": "type_row", "virtual": true, "propertyUrl": "rdf:type", "valueUrl": "https://example.org/Person" }
-    ]
-  }
-}
-```
-
-The metadata describes a layout of CSV, not one particular file, so it has no
-`url`. Rows are named relative to the document's URL. A pasted or local file is
-given a placeholder URL instead, and reports never show it.
-
-### Supported CSVW
-
-| Where | Supported |
-| --- | --- |
-| Metadata | A single table, or the first table of a group. |
-| `dialect` | `header`, `headerRowCount` (the first header row is matched), `delimiter`, `skipRows`, `trim`. |
-| Column | `name`, `titles`, `virtual`, `suppressOutput`, `aboutUrl`, `propertyUrl`, `valueUrl`, `datatype`, `null`, `separator`. The inherited properties may be set on the table or schema. |
-| `datatype` | `string`, `boolean` with a `format` such as `"Yes\|No"`, the integer types, `decimal`/`double`/`float` with `groupChar` and `decimalChar`, `date` with a `format` such as `"dd/MM/yyyy"`, `dateTime`, `time`, `anyURI`. |
-| URI templates | `{name}`, `{+name}` and `{#name}` over column names, `_row`, `_sourceRow` and `_name`. Prefixes from the CSVW initial context, such as `rdf:type`, are expanded. |
-
-Anything else in the metadata produces a
-[`csv-feature-unsupported`](error-reference.md#csv-feature-unsupported) warning
-in `setup.warnings`, rather than being ignored without a word. In particular,
-`required`, the datatype facets such as `minimum`, and the keys of the table
-schema are **not** checked. Put those constraints in the SHACL shapes, where
-they apply to every format of the data.
-
-## Where this differs from plain CSVW
-
-- **Columns are matched by title, not by position.** A reordered file
-  validates. A column the metadata expects but the file lacks is reported by
-  name ([`csv-column-missing`](error-reference.md#csv-column-missing)). A
-  column the metadata does not describe is a warning
-  ([`csv-column-unexpected`](error-reference.md#csv-column-unexpected)). A
-  title is matched exactly first, and then ignoring case.
-- **Unreadable cells are reported and kept.** A cell that its `datatype` cannot
-  read is reported once, at the cell, as
-  [`bad-format`](error-reference.md#bad-format), with what it should look like
-  ("It should be `Yes` or `No`."). Its text still goes into the RDF, so the
-  record is not also reported as missing that field.
-- **A row with no `aboutUrl` is named, not blank.** CSVW makes such a row a
-  blank node. The validator names it `#row-{_row}` of the file instead, which
-  is the CSV counterpart of [skolemizing](how-it-works.md) a JSON document. It
-  adds no triples. As for JSON, this is turned off when a shape requires
-  `sh:nodeKind sh:BlankNode` or when you pass `skolemize: false`, and the row
-  is then a blank node, still reported by its row and column.
+| Columns are matched to the header by position | Columns are matched by title, exactly and then ignoring case | A reordered file still validates, and a missing column is named |
+| A cell its `datatype` cannot read is an error | Reported as [`bad-format`](error-reference.md#bad-format) at the cell, and its text is kept | The record is not also reported as missing that field |
+| A row without `aboutUrl` is a blank node | Named `#row-{_row}` | Results can be traced back to the row ([how it works](how-it-works.md)) |
 
 ## Extensions
 
-These are CSVW common properties in the namespace
-`https://theodi.github.io/data-standard-validator/ns#`. CSVW only lets metadata
-use the prefixes of its own initial context, so write each one either as its
-full IRI or, as this validator also accepts, with the prefix `dsv:`.
+The validator understands three extra properties. They are CSVW
+[common properties](https://www.w3.org/TR/tabular-metadata/#common-properties)
+in the namespace `https://theodi.github.io/data-standard-validator/ns#`. CSVW
+only allows the prefixes of its own context, so write them as full IRIs. The
+validator also accepts `dsv:headerMatch` and the like.
 
-| Property | On | Meaning |
+| Property | On | What it does |
 | --- | --- | --- |
-| `headerMatch` | table | `"first-line"`: compare only the first line of each header cell with the column's titles. This is for spreadsheet exports that put help text under the column name, in the same cell. |
-| `valueMap` | column | The concepts a column may hold, as `[{ "@id", "skos:prefLabel", "skos:altLabel" }]`. A cell matching any label, ignoring case and spaces (`<5 days` matches `< 5 days`), becomes that concept's IRI. Any other value is kept as text, so the shapes' `sh:in` reports it with the permitted values, shown by their `prefLabel`. A `null` token is not null in a column whose value map uses it as a label. |
-| `skipIfNodeEmpty` | virtual column | Skip the column for a row that gave no value to the node it describes: its `aboutUrl` for an `rdf:type` column, otherwise its `valueUrl`, including any node below it. This keeps an optional part of a record that was left empty out of the RDF, rather than putting it in incomplete. |
+| `headerMatch` | table | `"first-line"` matches only the first line of each header cell |
+| `valueMap` | column | Turns labels into concept IRIs: `[{ "@id", "skos:prefLabel", "skos:altLabel" }]` |
+| `skipIfNodeEmpty` | virtual column | Drops the column for a row that gave its node no values |
+
+Other CSVW tools ignore these properties, so the metadata stays valid CSVW. Those tools
+will produce different RDF, though, as the example below shows.
+
+## Example: a spreadsheet export
+
+Take an event booking spreadsheet, exported to CSV. Each extension handles one
+way a real export differs from what standard CSVW expects.
+
+**Header cells hold help text.** The template puts guidance under each column
+name, in the same cell:
+
+```text
+"ticket_type
+
+Which ticket did the attendee buy?
+
+Options: Day pass, Full pass (3 days)"
+```
+
+Standard CSVW would compare the whole cell with `titles`. With
+`"headerMatch": "first-line"`, only `ticket_type` is compared.
+
+**Cells hold labels, but the shapes expect IRIs.** People write
+`Full pass (3 days)`, and the shape's `sh:in` lists
+`https://example.org/ticket#FullPass`. A standard `valueUrl` template can only
+paste the cell text into an IRI. That fails for labels with spaces or symbols,
+for alternative spellings, and for differences in case. `valueMap` lists each
+concept with every accepted spelling:
+
+```json
+{
+  "name": "ticketType",
+  "titles": "ticket_type",
+  "propertyUrl": "https://example.org/ticketType",
+  "https://theodi.github.io/data-standard-validator/ns#valueMap": [
+    { "@id": "https://example.org/ticket#DayPass", "skos:prefLabel": "Day pass" },
+    {
+      "@id": "https://example.org/ticket#FullPass",
+      "skos:prefLabel": "Full pass (3 days)",
+      "skos:altLabel": ["Full pass", "FullPass"]
+    }
+  ]
+}
+```
+
+Labels are matched ignoring case and spaces, so `day pass` works too. An
+unknown label is kept as text, so the shape reports it with the allowed values
+(`Day pass`, `Full pass (3 days)`).
+
+**One row holds nested records.** A booking row has the attendee's details and
+an optional billing address in `billing_street` and `billing_postcode`. Those
+columns use `"aboutUrl": "#row-{_row}/billing"`, and virtual columns link and
+type the address node:
+
+```json
+{
+  "name": "link_billing", "virtual": true,
+  "propertyUrl": "https://example.org/billingAddress", "valueUrl": "#row-{_row}/billing",
+  "https://theodi.github.io/data-standard-validator/ns#skipIfNodeEmpty": true
+},
+{
+  "name": "type_billing", "virtual": true, "aboutUrl": "#row-{_row}/billing",
+  "propertyUrl": "rdf:type", "valueUrl": "https://example.org/Address",
+  "https://theodi.github.io/data-standard-validator/ns#skipIfNodeEmpty": true
+}
+```
+
+Standard CSVW always outputs virtual columns. Without `skipIfNodeEmpty`, a
+booking with no billing address would still get an empty `Address`, and each
+required field in it would be reported missing. With it, the address is left
+out, as it would be in JSON.
 
 ## Troubleshooting
 
-**"This is a CSV file, but there is no CSVW metadata to read it with."** Pass
-`--csv-metadata`, or the `csvMetadata` option.
+**Every column is reported missing.** The header does not match `titles`. If
+header cells carry help text, add `headerMatch`.
 
-**Every column is reported missing.** The header does not match the columns'
-`titles`. Titles are matched exactly, then ignoring case. If the header cells
-carry help text below the column name, add
-[`"dsv:headerMatch": "first-line"`](#extensions).
+**Everything passes unexpectedly.** Shapes with `sh:targetClass` only check
+typed nodes. Check that a virtual column gives each row its `rdf:type`.
+Check `setup.warnings` as well, for metadata the validator ignored.
 
-**Everything passes, but you expected failures.** Check that the shapes target
-what each row describes. A shape with `sh:targetClass ex:Person` only checks
-nodes typed `ex:Person`, which in CSV means a virtual column with
-`"propertyUrl": "rdf:type"` and `"valueUrl"` set to that class. Also check
-`setup.warnings` for [`csv-feature-unsupported`](error-reference.md#csv-feature-unsupported):
-a constraint written in the metadata, such as `required`, is not checked. Put
-it in the shapes.
-
-**A value is reported as `bad-format` before any shape is involved.** Its
-column's `datatype` cannot read it, for example `yes` in a boolean column whose
-`format` is `"Yes|No"`. The hint says what it should look like.
+**A value is reported as `bad-format` before any shape runs.** The column's
+`datatype` cannot read it, such as `yes` when the format is `"Yes|No"`.
